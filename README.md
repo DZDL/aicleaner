@@ -1,7 +1,5 @@
 # AiCleaner
 
-[![Build Status](https://travis-ci.org/ZurMaD/restoration-old-video.svg?branch=master)](https://travis-ci.org/ZurMaD/restoration-old-video)
-
 <br />
 <p align="center">
   <a href="#">
