@@ -1,0 +1,11 @@
+name: tensorflow-example
+channels:
+  - defaults
+  - anaconda
+  - conda-forge
+dependencies:
+  - python=3.7
+  - tensorflow=1.15.2
+  - pip
+  - pip:
+    - mlflow

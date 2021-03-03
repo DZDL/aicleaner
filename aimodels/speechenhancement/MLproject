@@ -1,0 +1,8 @@
+name: tensorflow-speechenhacement
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      steps: {type: int, default: 1000}
+    command: "python inference.py --steps={steps}"

@@ -1,0 +1,4 @@
+#pyalsaaudio
+playsound
+pyaudio
+PyGObject
