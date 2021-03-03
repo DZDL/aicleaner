@@ -28,6 +28,28 @@
 
 This is an open-source project that wants to process audio input with denoising techniques, python-friendly and in real-time. Due restrictions may be on-premise or with payment to process on the cloud if necessary. Check the [ROADMAP](ROADMAP.md).
 
+### How to run
+
+There are multiple ways to run that we'll support in future.
+
+#### On-premise Linux
+
+```
+git clone https://github.com/DZDL/aicleaner
+cd aicleaner
+sudo apt-get install portaudio19-dev python-pyaudio python3-pyaudio
+pip3 install -r requirements.txt
+python3 main.py
+```
+
+#### Cloud hosted
+
+Not yet implemented.
+
+#### Docker version
+
+Not yet implemented.
+
 ### AI Models implemented
 
 AIModels supported by any ai-library on python (keras, tensorflow, pytorch, caffe). Create an issue if you want to add your model and we're going to adapt it.
