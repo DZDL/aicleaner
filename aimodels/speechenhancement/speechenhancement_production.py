@@ -35,35 +35,6 @@ except Exception as e:
                              numpy_audio_to_matrix_spectrogram, scaled_in)
 
 
-def load_model(weights_path,
-               name_model,
-               audio_dir_prediction,
-               dir_save_prediction,
-               audio_input_prediction,
-               audio_output_prediction,
-               sample_rate, min_duration,
-               frame_length,
-               hop_length_frame,
-               n_fft, 
-               hop_length_fft):
-    """
-    This function takes as input pretrained weights, 
-    noisy voice sound to denoise, predict the
-    denoise sound and save it to disk.
-    """
-
-    # load json and create model
-    json_file = open(weights_path+'/'+name_model+'.json', 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    loaded_model = model_from_json(loaded_model_json)
-    # load weights into new model
-    loaded_model.load_weights(weights_path+'/'+name_model+'.h5')
-    print("Loaded model from disk")
-
-    return loaded_model
-
-
 def predict_with_tensorflow_server(unwrapped_data):
     """
     This POST function works with a tensorflow server running
@@ -88,7 +59,7 @@ def predict_with_tensorflow_server(unwrapped_data):
 
 
 
-def prediction(weights_path,
+def prediction_production(weights_path,
                name_model,
                audio_dir_prediction,
                dir_save_prediction,
@@ -98,20 +69,16 @@ def prediction(weights_path,
                frame_length,
                hop_length_frame,
                n_fft, 
-               hop_length_fft,
-               loaded_model):
+               hop_length_fft):
                
-    # LOAD JSON MOVED
-    # PRETRAINED MOVED
-    loaded_model=loaded_model
 
     # Extracting noise and voice from folder and convert to numpy
-    print(audio_dir_prediction,
-          audio_input_prediction,
-          sample_rate,
-          frame_length,
-          hop_length_frame,
-          min_duration)
+    # print(audio_dir_prediction,
+    #       audio_input_prediction,
+    #       sample_rate,
+    #       frame_length,
+    #       hop_length_frame,
+    #       min_duration)
     audio = audio_files_to_numpy(audio_dir_prediction,
                                  audio_input_prediction,
                                  sample_rate,
@@ -121,7 +88,7 @@ def prediction(weights_path,
 
     # Dimensions of squared spectrogram
     dim_square_spec = int(n_fft / 2) + 1
-    print(dim_square_spec)
+    # print(dim_square_spec)
 
     # Create Amplitude and phase of the sounds
     m_amp_db_audio,  m_pha_audio = numpy_audio_to_matrix_spectrogram(audio,
@@ -144,10 +111,10 @@ def prediction(weights_path,
     # Remove noise model from noisy speech
     X_denoise = m_amp_db_audio - inv_sca_X_pred[:, :, :, 0]
     # Reconstruct audio from denoised spectrogram and phase
-    print(X_denoise.shape)
-    print(m_pha_audio.shape)
-    print(frame_length)
-    print(hop_length_fft)
+    # print(X_denoise.shape)
+    # print(m_pha_audio.shape)
+    # print(frame_length)
+    # print(hop_length_fft)
     audio_denoise_recons = matrix_spectrogram_to_numpy_audio(X_denoise,
                                                              m_pha_audio,
                                                              frame_length,
