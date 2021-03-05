@@ -98,7 +98,10 @@ def prediction(weights_path,
     # Reshape for prediction
     X_in = X_in.reshape(X_in.shape[0], X_in.shape[1], X_in.shape[2], 1)
     # Prediction using loaded network
+    print("------------------LOADED MODEL-----------------")
+    print(X_in)
     X_pred = loaded_model.predict(X_in)
+    print("------------------END LOADED MODEL-----------------")
     # Rescale back the noise model
     inv_sca_X_pred = inv_scaled_ou(X_pred)
     # Remove noise model from noisy speech

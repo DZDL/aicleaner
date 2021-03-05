@@ -9,10 +9,18 @@ from pydub.playback import play
 
 import pyaudio
 # Import models: here we add new AI models.
-from aimodels.speechenhancement.speechenhancement import load_model, prediction
+"""
+1.1 Develop mode
+"""
+#from aimodels.speechenhancement.speechenhancement import load_model, prediction
+"""
+1.2 Production mode
+"""
+from aimodels.speechenhancement.speechenhancement_production import load_model, prediction
+
 
 """
-GLOBAL CONFIGS.
+2. GLOBAL CONFIGS.
 """
 print("[GLOBAL CONFIGS] Loading....")
 # channels = 1  # Mono
@@ -32,7 +40,7 @@ record_seconds = 1.1  # default 1.1 due some restrictions
 print("[GLOBAL CONFIGS] Completed.")
 
 """
-FUNCTIONS
+3. FUNCTIONS
 """
 def record_one_second(filename_path='temporal/input.wav'):
     """
@@ -94,8 +102,8 @@ def executeprediction(aimodel):
     # Speech-Enhancement model
     if aimodel == 'speechenhancement':
         print("[AI MODEL] Speech-Enhancement detected:{}", aimodel)
-
-        if LOAD_WEIGHTS == 0:  # Not weights loaded
+        LOAD_WEIGHTS=1
+        if LOAD_WEIGHTS == -1:  # Not weights loaded
             print("[AI MODEL] {} --- [LOAD MODELS] Loading weigths...".format(aimodel))
             loaded_model = load_model(weights_path='aimodels/speechenhancement/weights',
                                       name_model='model_unet',
@@ -146,19 +154,21 @@ def hello():
 \$$   \$$ \$$$$$$  \$$$$$$  \$$$$$$$$ \$$$$$$$$ \$$   \$$ \$$   \$$ \$$$$$$$$ \$$   \$$
                                                                                         
                                                                                         """)
-
+"""
+4. LOOP ITERATION TO PROCESS DIRTY TO CLEAN AUDIO
+"""
 
 if __name__ == '__main__':
 
     hello()
 
     while True:
-
+        
+        start_time=time.time()
         record_one_second()
-        time.sleep(1)
+        print(time.time()-start_time)
         executeprediction('speechenhancement')
-        time.sleep(1)
+        print(time.time()-start_time)
         play_one_second()
-        time.sleep(1)
-        # break
-        #
+        print(time.time()-start_time)
+        break
