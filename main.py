@@ -40,7 +40,7 @@ FORMAT_OUTPUT = pyaudio.paFloat32  # default LE_32bits or pyaudio.paFloat32
 channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
-record_seconds = 5.0  # default 1.1 due some restrictions
+record_seconds = 2.5  # default 1.1 due some restrictions
 x = 0
 y=0
 console.print("[GLOBAL CONFIGS] Completed.", style="bold green")
@@ -146,11 +146,11 @@ def record_process_play_thread(lock_record, lock_playing):
 
         lock_record.acquire()
         record_one_second(filename_path='temporal/input_{}.wav'.format(x),thread_name=thread_name)
-        executeprediction(aimodel='speechenhancement', number=x,thread_name=thread_name)
-        x+=1
-        lock_record.release()  
+        x+=1 
+        lock_record.release( )
 
-        lock_playing.acquire()        
+        lock_playing.acquire()     
+        executeprediction(aimodel='speechenhancement', number=x-1,thread_name=thread_name)   
         play_one_second(filename_path='temporal/output_{}.wav'.format(y),thread_name=thread_name)
         y+=1
         lock_playing.release()
@@ -190,12 +190,16 @@ if __name__ == '__main__':
         lock_record, lock_playing), name='[T2]')
     t3 = threading.Thread(target=record_process_play_thread, args=(
         lock_record, lock_playing), name='[T3]')
+    t4 = threading.Thread(target=record_process_play_thread, args=(
+        lock_record, lock_playing), name='[T4]')
 
     t1.start()
     t2.start()
     t3.start()
+    t4.start()
 
 
     t1.join()
     t2.join()
     t3.join()
+    t4.join()
