@@ -1,6 +1,3 @@
-from aimodels.speechenhancement.speechenhancement_production import prediction_production
-from aimodels.speechenhancement.speechenhancement_production import \
-    prediction_production
 import os
 import sys
 import threading
@@ -12,6 +9,11 @@ import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
 
+
+
+from rich.console import Console
+console = Console()
+
 # Import models: here we add new AI models.
 """
 1.1 Develop mode
@@ -20,12 +22,13 @@ from pydub.playback import play
 """
 1.2 Production mode
 """
+from aimodels.speechenhancement.speechenhancement_production import prediction_production
 
 
 """
 2. GLOBAL CONFIGS.
 """
-print("[GLOBAL CONFIGS] Loading....")
+console.print("[GLOBAL CONFIGS] Loading...", style="bold green")
 # channels = 1  # Mono
 sample_rate = 44100  # Sample read to read and write
 # periodsize = 320
@@ -37,20 +40,22 @@ FORMAT_OUTPUT = pyaudio.paFloat32  # default LE_32bits or pyaudio.paFloat32
 channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
-record_seconds = 1.1  # default 1.1 due some restrictions
+record_seconds = 5.0  # default 1.1 due some restrictions
 x = 0
-print("[GLOBAL CONFIGS] Completed.")
+y=0
+console.print("[GLOBAL CONFIGS] Completed.", style="bold green")
 
 """
 3. FUNCTIONS
 """
 
 
-def record_one_second(filename_path='temporal/input.wav'):
+def record_one_second(filename_path='temporal/input.wav',thread_name=''):
     """
     This script record around one second with pyaudio with specific finename_path
     Example taken from https://www.thepythoncode.com/article/play-and-record-audio-sound-in-python
     """
+    console.print("{}[RECORD] Recording on {}".format(thread_name,filename_path), style="bold red")
     p = pyaudio.PyAudio()  # initialize PyAudio object
     stream = p.open(format=FORMAT_INPUT,
                     channels=channels,
@@ -59,13 +64,13 @@ def record_one_second(filename_path='temporal/input.wav'):
                     output=True,
                     frames_per_buffer=chunk)  # open stream object as input & output
     frames = []
-    print("[RECORD] Recording...")
+    
     for i in range(int(44100 / chunk * record_seconds)):
         data = stream.read(chunk)
         # if you want to hear your voice while recording
         # stream.write(data)
         frames.append(data)
-    print("[RECORD] Finished recording.")
+    
 
     stream.stop_stream()  # stop and close stream
     stream.close()
@@ -78,24 +83,10 @@ def record_one_second(filename_path='temporal/input.wav'):
     wf.setframerate(sample_rate)  # set the sample rate
     wf.writeframes(b"".join(frames))  # write the frames as bytes
     wf.close()  # close the file
-    return True
-
-def play_one_second(file='temporal/output.wav'):
-    """
-    This script play file
-    Example adapted from https://people.csail.mit.edu/hubert/pyaudio/
-    """
-    print("[PLAY] Opening file")
-    if (sys.platform == 'windows' or
-            sys.platform == 'macos'):
-        sound = AudioSegment.from_file(file)
-        play(sound)
-    elif (sys.platform == 'linux'):
-        command_inference = 'python3 tools_example/pyalsaaudio_playback.py temporal/output.wav'
-        result = os.popen(command_inference).read()
+    console.print("{}[RECORD] Finished recording on {}".format(thread_name,filename_path), style="bold red")
 
 
-def executeprediction(aimodel='speechenhancement',number=0):
+def executeprediction(aimodel='speechenhancement', number=-1,thread_name=''):
     """
     This function is a manager of ai models applied
     like filters to noisy mic
@@ -103,43 +94,71 @@ def executeprediction(aimodel='speechenhancement',number=0):
 
     # Speech-Enhancement model
     if aimodel == 'speechenhancement':
-        print("[AI MODEL] {} --- [INFERENCE] Inference net, cleaning audio".format(aimodel))
+        console.print(
+            "{}[AI MODEL] {} -[INFERENCE]-cleaning on {}".format(thread_name,aimodel,'temporal/input_{}.wav'.format(number)), style="bold red")
         prediction_production(weights_path='aimodels/speechenhancement/weights',
                               name_model='model_unet',
                               audio_dir_prediction='temporal',
                               dir_save_prediction='temporal/',
-                              audio_input_prediction=['input_{}.wav'.format(number)],
-                              audio_output_prediction='output_{}.wav'.format(number),
+                              audio_input_prediction=[
+                                  'input_{}.wav'.format(number)],
+                              audio_output_prediction='output_{}.wav'.format(
+                                  number),
                               sample_rate=8000,  # default 8000
                               min_duration=1.1,  # default 1.1
                               frame_length=8064,  # default 8064
                               hop_length_frame=8064,  # default 8064
                               n_fft=255,  # default 255
                               hop_length_fft=63)  # default 63
-        os.remove('temporal/input_{}.wav')
-        print("[AI MODEL] Speech-Enhancement finished.")
+        # os.remove('temporal/input_{}.wav')
+        console.print("{}[AI MODEL] Speech-Enhancement finished. Saving {}".format(thread_name,'temporal/output_{}.wav'.format(number)), style="bold red")
     # Here you can add a new models
     else:
-        print("[AI MODEL] No aimodel selected")
+        console.print("{}[AI MODEL] No aimodel selected".format(thread_name,))
         return False
 
+def play_one_second(filename_path='temporal/output.wav',thread_name=''):
+    """
+    This script play file
+    Example adapted from https://people.csail.mit.edu/hubert/pyaudio/
+    """
+    console.print("{}[PLAY] Playing {}".format(thread_name,filename_path), style="bold red")
+    if (sys.platform == 'windows' or
+            sys.platform == 'macos'):
+        sound = AudioSegment.from_file(filename_path)
+        play(sound)
+    elif (sys.platform == 'linux'):
+        command_inference = 'python3 tools_example/pyalsaaudio_playback.py {}'.format(filename_path)
+        result = os.popen(command_inference).read()
+    console.print("{}[PLAY] Finish audio playing {}".format(thread_name,filename_path), style="bold red")
 
-def record_process_play_thread(lock1,lock2):
+def record_process_play_thread(lock_record, lock_playing):
 
     global x
+    global y
 
-    lock1.acquire()
-    record_one_second(filename_path='temporal/input_{}.wav'.format(x))
-    lock1.release()
-    
-    lock2.acquire()
-    executeprediction(aimodel='speechenhancement',number=x)
-    play_one_second(file='temporal/output_{}.wav'.format(x))
-    lock2.release()
+    x=0
+    y=0
+
+    thread_name=threading.current_thread().name
+
+    while True:
+
+        lock_record.acquire()
+        record_one_second(filename_path='temporal/input_{}.wav'.format(x),thread_name=thread_name)
+        executeprediction(aimodel='speechenhancement', number=x,thread_name=thread_name)
+        x+=1
+        lock_record.release()  
+
+        lock_playing.acquire()        
+        play_one_second(filename_path='temporal/output_{}.wav'.format(y),thread_name=thread_name)
+        y+=1
+        lock_playing.release()
+
 
 def hello():
-    print("""------------------------------------------------------------------------------------
- _____   ______   ______   __        ________   ______   __    __  ________  _______  
+    console.print("""------------------------------------------------------------------------------------
+ ______   ______   ______   __        ________   ______   __    __  ________  _______  
 /      \ |      \ /      \ |  \      |        \ /      \ |  \  |  \|        \|       \ 
 |  $$$$$$\ \$$$$$$|  $$$$$$\| $$      | $$$$$$$$|  $$$$$$\| $$\ | $$| $$$$$$$$| $$$$$$$\ 
 | $$__| $$  | $$  | $$   \$$| $$      | $$__    | $$__| $$| $$$\| $$| $$__    | $$__| $$
@@ -149,7 +168,7 @@ def hello():
 | $$  | $$|   $$ \ \$$    $$| $$     \| $$     \| $$  | $$| $$  \$$$| $$     \| $$  | $$
 \ $$   \$$ \$$$$$$  \$$$$$$  \$$$$$$$$ \$$$$$$$$ \$$   \$$ \$$   \$$ \$$$$$$$$ \$$   \$$
                                                                                         
-                                                                                        """)
+                                                                                        """, style="bold red")
 
 
 """
@@ -158,21 +177,25 @@ def hello():
 
 if __name__ == '__main__':
 
-    lock1 = threading.Lock()
-    lock2 = threading.Lock()
+    lock_record = threading.Lock()
+    lock_playing = threading.Lock()
 
     hello()
-    while True:
-        start_time = time.time()
-        # Record voice and generate temporal/input_x.wav, process and play
-        t1 = threading.Thread(target=record_process_play_thread, args=(lock1,lock2), name='[T1]')
-        t2 = threading.Thread(target=record_process_play_thread, args=(lock1,lock2), name='[T2]')
-        t1 = threading.Thread(target=record_process_play_thread, args=(lock1,lock2), name='[T3]')
-        
-        
-        t1.start()
-        t1.join()
-        t2.start()
-        t2.join()
-        t3.start()
-        t3.join()
+
+    # start_time = time.time()
+    # Record voice and generate temporal/input_x.wav, process and play
+    t1 = threading.Thread(target=record_process_play_thread, args=(
+        lock_record, lock_playing), name='[T1]')
+    t2 = threading.Thread(target=record_process_play_thread, args=(
+        lock_record, lock_playing), name='[T2]')
+    t3 = threading.Thread(target=record_process_play_thread, args=(
+        lock_record, lock_playing), name='[T3]')
+
+    t1.start()
+    t2.start()
+    t3.start()
+
+
+    t1.join()
+    t2.join()
+    t3.join()

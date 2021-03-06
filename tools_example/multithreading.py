@@ -5,6 +5,7 @@ x=0
 
 def process():
     global x 
+    print("process")
     x+=1
 
 def thread_task(lock):
