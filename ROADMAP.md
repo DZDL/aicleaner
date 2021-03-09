@@ -8,6 +8,8 @@ List of things achieved:
 2. Run a simple inference from one model. ✔️
 3. Record, process and play one single audio. ✔️
 4. Do step 3 in loops. ✔️
+5. Support for tensorflow serving. ✔️
+6. Thread and colorful output. ✔️
 
 List of things to do, not sorted and looking for help:
 
