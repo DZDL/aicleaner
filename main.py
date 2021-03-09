@@ -14,14 +14,16 @@ import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
 from rich.console import Console  # For colorful output
-import alsaaudio  # only for Linux
+
+if (sys.platform == 'linux'):
+    import alsaaudio  # input/output only for Linux ALSA
 
 """
 2. GLOBAL CONFIGS.
 """
-console = Console()
-console.print(
-    "[GLOBAL CONFIGS] Loading variables and constants...", style="bold green")
+console = Console()  # Create object to print colorful
+console.print("[GLOBAL CONFIGS] Loading variables and constants...",
+              style="bold green")
 # channels = 1  # Mono
 sample_rate = 44100  # Sample read to read and write
 # periodsize = 320
@@ -36,10 +38,10 @@ sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 202
 record_seconds = 1.2  # default 1.1 due some restrictions
 x = 0
 y = 0
-process_queue = [] # ready to process
-player_queue = [] # ready to play
-console.print(
-    "[GLOBAL CONFIGS] Finish loading variables and constants.", style="bold green")
+process_queue = []  # ready to process
+player_queue = []  # ready to play
+console.print("[GLOBAL CONFIGS] Finish loading variables and constants.",
+              style="bold green")
 
 """
 3. FUNCTIONS
@@ -113,14 +115,17 @@ def load_output_device():
     """
     console.print("[GLOBAL CONFIGS] Loading output devices...",
                   style="bold green")
-    device = alsaaudio.PCM(channels=1,
-                           rate=sample_rate_output,
-                           format=32,
-                           periodsize=1000,
-                           device='default')
+
+    if (sys.platform == 'linux'):
+        device = alsaaudio.PCM(channels=1,
+                               rate=sample_rate_output,
+                               format=32,
+                               periodsize=1000,
+                               device='default')
+        return device
     console.print(
         "[GLOBAL CONFIGS] Finish loading output devices.", style="bold green")
-    return device
+    
 
 
 def record_one_second(filename_path='temporal/input.wav', thread_name=None, p=None, stream=None):
@@ -130,8 +135,6 @@ def record_one_second(filename_path='temporal/input.wav', thread_name=None, p=No
     """
     console.print("{}[RECORD] Recording on {}".format(
         thread_name, filename_path), style="bold red")
-    p = p
-    stream = stream
     frames = []
 
     for i in range(int(44100 / chunk * record_seconds)):
@@ -155,7 +158,7 @@ def record_one_second(filename_path='temporal/input.wav', thread_name=None, p=No
         thread_name, filename_path), style="bold red")
 
 
-def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None):
+def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None, output=None):
     """
     This function is a manager of ai models applied
     like filters to noisy mic
@@ -180,7 +183,8 @@ def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None):
                               frame_length=8064,  # default 8064
                               hop_length_frame=8064,  # default 8064
                               n_fft=255,  # default 255
-                              hop_length_fft=63)  # default 63
+                              hop_length_fft=63, # default 63
+                              output=output)
         # os.remove('temporal/input_{}.wav')
         console.print("{}[AI MODEL] Speech-Enhancement finished. Saving {}".format(thread_name,
                                                                                    'temporal/output_{}.wav'.format(number)),
@@ -196,23 +200,38 @@ def play_one_file(filename_path='temporal/output.wav', thread_name=None, device=
     This script play file
     Example adapted from https://people.csail.mit.edu/hubert/pyaudio/
     """
-    console.print("{}[PLAY] Playing {}".format(
-        thread_name, filename_path), style="bold red")
-    if (sys.platform == 'windows' or
-            sys.platform == 'macos'):
-        sound = AudioSegment.from_file(filename_path)
-        play(sound)
+    console.print("{}[PLAY] Playing {}".format(thread_name,
+                                               filename_path),
+                  style="bold red")
+    if (sys.platform == 'windows'):
+        """
+        Only Windows support
+        """
+        # sound = AudioSegment.from_file(filename_path)
+        # play(sound)
+        # Uncomplete
+        pass
+    elif (sys.platform == 'macos'):
+        """
+        Only macos support
+        """
+        pass
     elif (sys.platform == 'linux'):
+        """
+        Only linux support
+        """
         with wave.open(filename_path, 'rb') as f:
             periodsize = 1000
+            # Read data
             data = f.readframes(periodsize)
             while data:
                 # Read data from stdin
                 device.write(data)
                 data = f.readframes(periodsize)
 
-    console.print("{}[PLAY] Finish audio playing {}".format(
-        thread_name, filename_path), style="bold red")
+    console.print("{}[PLAY] Finish audio playing {}".format(thread_name,
+                                                            filename_path),
+                  style="bold red")
 
 
 def record_only_thread(p, stream):
@@ -233,7 +252,7 @@ def record_only_thread(p, stream):
         x += 1  # Last line, don't move
 
 
-def process_only_thread():
+def process_only_thread(lock_process):
 
     global process_queue
     global player_queue
@@ -242,16 +261,21 @@ def process_only_thread():
 
     while True:
         if len(process_queue) > 0:
+            # lock_process.acquire()
             # release the first queued but get the value
 
             number = process_queue.pop(0)
             console.print('{} PROCESS: {}'.format(thread_name,
                                                   str(number)),
                           style="bold green")
+
+            # lock_process.release()
             executeprediction(aimodel='speechenhancement',
                               number=number,
-                              thread_name=thread_name)
+                              thread_name=thread_name,
+                              output=False)
             player_queue.append(number)
+
 
 def play_only_thread(device):
 
@@ -275,33 +299,46 @@ def play_only_thread(device):
 
 if __name__ == '__main__':
 
-    hello()
-    clean_temporal_files()
+    # Initial configurations
 
+    hello()  # Logo and info of the project
+    clean_temporal_files()  # Clean files by path
     device = load_output_device()  # only for linux pyalsaaudio
     p, stream = load_input_device()  # only for linux pyalsaaudio
     x = 0
     y = 0
+    process_queue = []  # ready to process
+    player_queue = []  # ready to play
+    lock_process = threading.Lock()
 
-    # start_time = time.time()
-    # Record voice and generate temporal/input_x.wav, process and play
+    time.sleep(2)  # drivers slow start needed
+    # Record voice continously
     t1 = threading.Thread(target=record_only_thread,
-                          args=(p, stream,),
+                          args=(p, stream),
                           name='[T1]')
-    t2_1 = threading.Thread(target=process_only_thread,
-                          name='[T2_1]')
-    # t2_2 = threading.Thread(target=process_only_thread,
-    #                       name='[T2_2]')
+
+    # Process voice continously by queue
+    t2 = threading.Thread(target=process_only_thread,
+                          args=(lock_process,),
+                          name='[T2]')
+
+    t4 = threading.Thread(target=process_only_thread,
+                          args=(lock_process,),
+                          name='[T4]')
+
+    # Play voice continously by queue
     t3 = threading.Thread(target=play_only_thread,
                           args=(device,),
                           name='[T3]')
 
+    time.sleep(2)  # drivers slow start needed
+    # Charge and join threads
     t1.start()
-    t2_1.start()
-    # t2_2.start()
+    t2.start()
     t3.start()
+    t4.start()
 
     t1.join()
-    t2_1.join()
-    # t2_2.join()
+    t2.join()
     t3.join()
+    t4.join()

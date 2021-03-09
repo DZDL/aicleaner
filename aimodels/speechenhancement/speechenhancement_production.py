@@ -35,22 +35,23 @@ except Exception as e:
                              numpy_audio_to_matrix_spectrogram, scaled_in)
 
 
-def predict_with_tensorflow_server(unwrapped_data):
+def predict_with_tensorflow_server(unwrapped_data,output):
     """
     This POST function works with a tensorflow server running
     Do an inference in the production way.
     """
 
-    url="http://localhost:8501/v1/models/model_unet:predict"
+    url="http://localhost:8502/v1/models/model_unet:predict"
     data = json.dumps({"signature_name": "serving_default", "instances": unwrapped_data.tolist()})
-    print("[TENSORFLOW SERVER] DATA SENDING....-------------------")
-    print(data[:400]+'"continue...')
-    #print('Data: {} ... {}'.format(data[:50], data[len(data)-52:]))
+    if output==True:
+        print("[TENSORFLOW SERVER] DATA SENDING....-------------------")
+        print(data[:400]+'"continue...')
 
     headers = {"content-type": "application/json"}
     json_response = requests.post(url, data=data, headers=headers)
-    print("[TENSORFLOW SERVER] JSON RESPONSE ---------------------")
-    print(json_response.text[:400]+'"continue...')
+    if output==True:
+        print("[TENSORFLOW SERVER] JSON RESPONSE ---------------------")
+        print(json_response.text[:400]+'"continue...')
     predictions = json.loads(json_response.text)['predictions']
     myreturn=np.asarray(predictions)
     return myreturn
@@ -69,7 +70,8 @@ def prediction_production(weights_path,
                frame_length,
                hop_length_frame,
                n_fft, 
-               hop_length_fft):
+               hop_length_fft,
+               output):
                
 
     # Extracting noise and voice from folder and convert to numpy
@@ -103,7 +105,7 @@ def prediction_production(weights_path,
     # Prediction using loaded network
     print("------------------LOADED MODEL-----------------")
     # print('X_in|'+str(X_in))
-    X_pred = predict_with_tensorflow_server(X_in)
+    X_pred = predict_with_tensorflow_server(X_in,output)
     # print('X_pred|'+str(X_pred))
     print("------------------END LOADED MODEL-----------------")
     # Rescale back the noise model
