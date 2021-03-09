@@ -44,6 +44,7 @@ wf = wave.open(filename, "wb")
 wf.setnchannels(channels)
 # set the sample format
 wf.setsampwidth(p.get_sample_size(FORMAT))
+print('wf.setsampwidth: {}'.format(p.get_sample_size(FORMAT)))
 # set the sample rate
 wf.setframerate(sample_rate)
 # write the frames as bytes

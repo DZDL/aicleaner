@@ -26,20 +26,20 @@ files_input = ['temporal/input_0.wav',
                'temporal/input_4.wav',
                'temporal/input_5.wav',
                'temporal/input_6.wav',
-               'temporal/input_7.wav',
-               'temporal/input_8.wav',
-               'temporal/input_9.wav',
-               'temporal/input_10.wav',
-               'temporal/input_11.wav',
-               'temporal/input_12.wav',
-               'temporal/input_13.wav',
-               'temporal/input_14.wav',
-               'temporal/input_15.wav',
-               'temporal/input_16.wav',
-               'temporal/input_17.wav',
-               'temporal/input_18.wav',
-               'temporal/input_19.wav',
-               'temporal/input_20.wav', ]
+               'temporal/input_7.wav',]
+            #    'temporal/input_8.wav',
+            #    'temporal/input_9.wav',
+            #    'temporal/input_10.wav',
+            #    'temporal/input_11.wav',
+            #    'temporal/input_12.wav',
+            #    'temporal/input_13.wav',
+            #    'temporal/input_14.wav',
+            #    'temporal/input_15.wav',
+            #    'temporal/input_16.wav',
+            #    'temporal/input_17.wav',
+            #    'temporal/input_18.wav',
+            #    'temporal/input_19.wav',
+            #    'temporal/input_20.wav', ]
 
 files_output = ['temporal/output_0.wav',
                 'temporal/output_1.wav',
@@ -98,10 +98,10 @@ def play(f):
 
     periodsize = f.getframerate() // 8
 
-    print('%d channels, %d sampling rate, format %d, periodsize %d\n' % (f.getnchannels(),
-                                                                         f.getframerate(),
-                                                                         format,
-                                                                         periodsize))
+    # print('%d channels, %d sampling rate, format %d, periodsize %d\n' % (1,
+                                                                        #  44100,
+                                                                        #  format,
+                                                                        #  periodsize))
 
     data = f.readframes(periodsize)
     if data:
@@ -109,7 +109,7 @@ def play(f):
             # Read data from stdin
             if data:
                 device.write(data)
-                print(data)
+                # print(data)
                 data = f.readframes(periodsize)
     else:
         mydata=bytes('\x00', 'utf-8')

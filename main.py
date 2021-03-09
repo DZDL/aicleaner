@@ -10,13 +10,9 @@ import time
 import wave  # to read and write audio files
 
 import numpy as np  # to treat audio data as numpy array
-import pyaudio
-from pydub import AudioSegment
-from pydub.playback import play
 from rich.console import Console  # For colorful output
-
-if (sys.platform == 'linux'):
-    import alsaaudio  # input/output only for Linux ALSA
+import soundcard as sc
+import soundfile as sf
 
 """
 2. GLOBAL CONFIGS.
@@ -30,12 +26,12 @@ sample_rate = 44100  # Sample read to read and write
 # FORMAT = alsaaudio.PCM_FORMAT_S16_LE
 # COUNTER_CACHE_LOOPS = 1000
 chunk = 1024  # set the chunk size of 1024 samples
-FORMAT_INPUT = pyaudio.paInt32  # default LE_32bits or pyaudio.paInt32
-FORMAT_OUTPUT = pyaudio.paFloat32  # default LE_32bits or pyaudio.paFloat32
+# FORMAT_INPUT = pyaudio.paInt32  # default LE_32bits or pyaudio.paInt32
+# FORMAT_OUTPUT = pyaudio.paFloat32  # default LE_32bits or pyaudio.paFloat32
 channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
-record_seconds = 1.5  # default 1.1 due some restrictions
+record_seconds = 1.2  # default 1.1 due some restrictions
 x = 0
 y = 0
 process_queue = []  # ready to process
@@ -97,16 +93,13 @@ def load_input_device():
     """
     console.print("[GLOBAL CONFIGS] Loading input devices...",
                   style="bold green")
-    p = pyaudio.PyAudio()  # initialize PyAudio object
-    stream = p.open(format=FORMAT_INPUT,
-                    channels=channels,
-                    rate=sample_rate_input,
-                    input=True,
-                    output=True,
-                    frames_per_buffer=chunk)  # open stream object as input & output
+
+    # get the current default microphone on your system:
+    default_mic = sc.default_microphone()
+
     console.print("[GLOBAL CONFIGS] Finish loading input devices.",
                   style="bold green")
-    return p, stream
+    return default_mic
 
 
 def load_output_device():
@@ -117,45 +110,32 @@ def load_output_device():
     console.print("[GLOBAL CONFIGS] Loading output devices...",
                   style="bold green")
 
-    if (sys.platform == 'linux'):
-        device = alsaaudio.PCM(channels=1,
-                               rate=sample_rate_output,
-                               format=32,
-                               periodsize=1000,
-                               device='default')
+    # get the current default speaker on your system:
+    default_speaker = sc.default_speaker()
 
     console.print("[GLOBAL CONFIGS] Finish loading output devices.",
                   style="bold green")
 
-    return device
+    return default_speaker
 
 
-def record_one_second(filename_path='temporal/input.wav', thread_name=None, p=None, stream=None):
+def record_one_second(filename_path='temporal/input.wav', thread_name=None, default_mic=None):
     """
-    This script record around one second with pyaudio with specific finename_path
-    Example taken from https://www.thepythoncode.com/article/play-and-record-audio-sound-in-python
+    This script record around one second with soundcard
     """
     console.print("{}[RECORD] Recording on {}".format(
         thread_name, filename_path), style="bold red")
-    frames = []
 
-    for i in range(int(44100 / chunk * record_seconds)):
-        data = stream.read(chunk)
-        # if you want to hear your voice while recording
-        # stream.write(data)
-        frames.append(data)
-
-    # stream.stop_stream()  # stop and close stream
-    # stream.close()
-    # p.terminate()  # terminate pyaudio object
-
+    start_time=time.time()
+    
+    data = default_mic.record(numframes=sample_rate_input*record_seconds,samplerate=sample_rate_input,channels=channels)
+    watch_1=time.time()-start_time
+    print("--- %s seconds ---" % (watch_1))
     # save audio file in 'write bytes' mode
-    wf = wave.open(filename_path, "wb")
-    wf.setnchannels(channels)  # set the channels
-    wf.setsampwidth(p.get_sample_size(FORMAT_INPUT))  # set the sample format
-    wf.setframerate(sample_rate)  # set the sample rate
-    wf.writeframes(b"".join(frames))  # write the frames as bytes
-    wf.close()  # close the file
+    sf.write(filename_path, data, sample_rate_input, 'PCM_32')
+    watch_2=time.time()-watch_1
+    print("--- %s seconds ---" % (watch_2))
+
     console.print("{}[RECORD] Finished recording on {}".format(
         thread_name, filename_path), style="bold red")
 
@@ -236,7 +216,7 @@ def play_one_file(filename_path='temporal/output.wav', thread_name=None, device=
                   style="bold red")
 
 
-def record_only_thread(p, stream):
+def record_only_thread(default_mic):
 
     global x
     global process_queue
@@ -246,8 +226,7 @@ def record_only_thread(p, stream):
     while True:
         record_one_second(filename_path='temporal/input_{}.wav'.format(x),
                           thread_name=thread_name,
-                          p=p,
-                          stream=stream)
+                          default_mic=default_mic)
         process_queue.append(x)  # append to the queue
         console.print('{} RECORD: {}'.format(thread_name, str(process_queue)),
                       style="bold green")
@@ -275,7 +254,7 @@ def process_only_thread(lock_process):
             executeprediction(aimodel='speechenhancement',
                               number=number,
                               thread_name=thread_name,
-                              output=False)
+                              output=False) # change to True to see other outputs
             player_queue.append(number)
 
 
@@ -305,18 +284,18 @@ if __name__ == '__main__':
 
     hello()  # Logo and info of the project
     clean_temporal_files()  # Clean files by path
-    device = load_output_device()  # only for linux pyalsaaudio
-    p, stream = load_input_device()  # only for linux pyalsaaudio
+    default_speaker = load_output_device()
+    default_mic = load_input_device()
     x = 0
     y = 0
     process_queue = []  # ready to process
     player_queue = []  # ready to play
     lock_process = threading.Lock()
 
-    time.sleep(2)  # drivers slow start needed
+    time.sleep(1)  # drivers slow start needed
     # Record voice continously
     t1 = threading.Thread(target=record_only_thread,
-                          args=(p, stream),
+                          args=(default_mic,),
                           name='[T1]')
 
     # Process voice continously by queue
@@ -324,23 +303,23 @@ if __name__ == '__main__':
                           args=(lock_process,),
                           name='[T2]')
 
-    t4 = threading.Thread(target=process_only_thread,
-                          args=(lock_process,),
-                          name='[T4]')
+    # t4 = threading.Thread(target=process_only_thread,
+    #                       args=(lock_process,),
+    #                       name='[T4]')
 
-    # Play voice continously by queue
-    t3 = threading.Thread(target=play_only_thread,
-                          args=(device,),
-                          name='[T3]')
+    # # Play voice continously by queue
+    # t3 = threading.Thread(target=play_only_thread,
+    #                       args=(default_speaker,),
+    #                       name='[T3]')
 
-    time.sleep(2)  # drivers slow start needed
+    time.sleep(1)  # drivers slow start needed
     # Charge and join threads
     t1.start()
     t2.start()
-    t3.start()
-    t4.start()
+    # t3.start()
+    # t4.start()
 
     t1.join()
     t2.join()
-    t3.join()
-    t4.join()
+    # t3.join()
+    # t4.join()

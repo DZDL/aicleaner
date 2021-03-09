@@ -41,7 +41,7 @@ def predict_with_tensorflow_server(unwrapped_data,output):
     Do an inference in the production way.
     """
 
-    url="http://localhost:8502/v1/models/model_unet:predict"
+    url="http://localhost:8501/v1/models/model_unet:predict"
     data = json.dumps({"signature_name": "serving_default", "instances": unwrapped_data.tolist()})
     if output==True:
         print("[TENSORFLOW SERVER] DATA SENDING....-------------------")
