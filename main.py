@@ -1,34 +1,27 @@
-from aimodels.speechenhancement.speechenhancement_production import \
-    prediction_production
+# 1. ALL LIBRARIES
+# Import models: here we add new AI models.
+# from aimodels.speechenhancement.speechenhancement import load_model, prediction # dev
+from aimodels.speechenhancement.speechenhancement_production import prediction_production  # production
+
 import os
 import sys
-import threading
+import threading  # to manage threads
 import time
-import wave
+import wave  # to read and write audio files
 
-import numpy as np
+import numpy as np  # to treat audio data as numpy array
 import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
-from rich.console import Console
+from rich.console import Console  # For colorful output
 import alsaaudio  # only for Linux
-
-
-console = Console()
-
-# Import models: here we add new AI models.
-"""
-1.1 Develop mode
-"""
-#from aimodels.speechenhancement.speechenhancement import load_model, prediction
-"""
-1.2 Production mode
-"""
 
 """
 2. GLOBAL CONFIGS.
 """
-console.print("[GLOBAL CONFIGS] Loading...", style="bold green")
+console = Console()
+console.print(
+    "[GLOBAL CONFIGS] Loading variables and constants...", style="bold green")
 # channels = 1  # Mono
 sample_rate = 44100  # Sample read to read and write
 # periodsize = 320
@@ -43,23 +36,102 @@ sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 202
 record_seconds = 1.2  # default 1.1 due some restrictions
 x = 0
 y = 0
-console.print("[GLOBAL CONFIGS] Completed.", style="bold green")
+process_queue = [] # ready to process
+player_queue = [] # ready to play
+console.print(
+    "[GLOBAL CONFIGS] Finish loading variables and constants.", style="bold green")
 
 """
 3. FUNCTIONS
 """
 
 
-def record_one_second(filename_path='temporal/input.wav', thread_name='',p='',stream=''):
+def hello():
+    console.print("""|---------------------------------------------------------------------------------------------|
+|  ______   ______   ______   __        ________   ______   __    __  ________  _______       |
+| /      \ |      \ /      \ |  \      |        \ /      \ |  \  |  \|        \|       \      |
+||  $$$$$$\ \$$$$$$|  $$$$$$\| $$      | $$$$$$$$|  $$$$$$\| $$\ | $$| $$$$$$$$| $$$$$$$\     |
+|| $$__| $$  | $$  | $$   \$$| $$      | $$__    | $$__| $$| $$$\| $$| $$__    | $$__| $$     |
+|| $$    $$  | $$  | $$      | $$      | $$  \   | $$    $$| $$$$\ $$| $$  \   | $$    $$     |
+|| $$$$$$$$  | $$  | $$   __ | $$      | $$$$$   | $$$$$$$$| $$\$$ $$| $$$$$   | $$$$$$$\     |
+|| $$  | $$ _| $$_ | $$__/  \| $$_____ | $$_____ | $$  | $$| $$ \$$$$| $$_____ | $$  | $$     |
+|| $$  | $$|   $$ \ \$$    $$| $$     \| $$     \| $$  | $$| $$  \$$$| $$     \| $$  | $$     |
+|\ $$   \$$ \$$$$$$  \$$$$$$  \$$$$$$$$ \$$$$$$$$ \$$   \$$ \$$   \$$ \$$$$$$$$ \$$   \$$     |
+|                                                                                             |
+|Mantainer: Pablo Diaz (github.com/zurmad)                                                    |
+|Github: https://github.com/DZDL/aicleaner                                                    |
+|License: MIT                                                                                 |
+|Version: Alpha v0.1 [2020-03-08]                                                             |
+|Branch: Multithreading - 3 main threads (process thread can increase)                        |
+|---------------------------------------------------------------------------------------------|""", style="bold yellow")
+
+
+def clean_temporal_files():
+    """
+    Remove all files in specific paths
+    """
+    paths_to_remove = ['temporal/']
+
+    console.print("[GLOBAL CONFIGS] Cleaning temporal files in {}".format(paths_to_remove),
+                  style="bold green")
+
+    try:
+        for mypath in paths_to_remove:
+            for f in os.listdir(mypath):
+                if not 'README' in f:
+                    os.remove(os.path.join(mypath, f))
+    except Exception as e:
+        print(e)
+
+    console.print("[GLOBAL CONFIGS] Finish cleaning temporal files in {}".format(paths_to_remove),
+                  style="bold green")
+
+
+def load_input_device():
+    """
+    This function initialize mic input
+    object and returns the objects get data
+    """
+    console.print("[GLOBAL CONFIGS] Loading input devices...",
+                  style="bold green")
+    p = pyaudio.PyAudio()  # initialize PyAudio object
+    stream = p.open(format=FORMAT_INPUT,
+                    channels=channels,
+                    rate=sample_rate_input,
+                    input=True,
+                    output=True,
+                    frames_per_buffer=chunk)  # open stream object as input & output
+    console.print("[GLOBAL CONFIGS] Finish loading input devices.",
+                  style="bold green")
+    return p, stream
+
+
+def load_output_device():
+    """
+    This function initialize the speakers output
+    object and then return it to write data into it.
+    """
+    console.print("[GLOBAL CONFIGS] Loading output devices...",
+                  style="bold green")
+    device = alsaaudio.PCM(channels=1,
+                           rate=sample_rate_output,
+                           format=32,
+                           periodsize=1000,
+                           device='default')
+    console.print(
+        "[GLOBAL CONFIGS] Finish loading output devices.", style="bold green")
+    return device
+
+
+def record_one_second(filename_path='temporal/input.wav', thread_name=None, p=None, stream=None):
     """
     This script record around one second with pyaudio with specific finename_path
     Example taken from https://www.thepythoncode.com/article/play-and-record-audio-sound-in-python
     """
     console.print("{}[RECORD] Recording on {}".format(
         thread_name, filename_path), style="bold red")
-
-    p=p
-    stream=stream
+    p = p
+    stream = stream
     frames = []
 
     for i in range(int(44100 / chunk * record_seconds)):
@@ -83,7 +155,7 @@ def record_one_second(filename_path='temporal/input.wav', thread_name='',p='',st
         thread_name, filename_path), style="bold red")
 
 
-def executeprediction(aimodel='speechenhancement', number=-1, thread_name=''):
+def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None):
     """
     This function is a manager of ai models applied
     like filters to noisy mic
@@ -91,8 +163,10 @@ def executeprediction(aimodel='speechenhancement', number=-1, thread_name=''):
 
     # Speech-Enhancement model
     if aimodel == 'speechenhancement':
-        console.print(
-            "{}[AI MODEL] {} -[INFERENCE]-cleaning on {}".format(thread_name, aimodel, 'temporal/input_{}.wav'.format(number)), style="bold red")
+        console.print("{}[AI MODEL] {} -[INFERENCE]-cleaning on {}".format(thread_name,
+                                                                           aimodel,
+                                                                           'temporal/input_{}.wav'.format(number)),
+                      style="bold red")
         prediction_production(weights_path='aimodels/speechenhancement/weights',
                               name_model='model_unet',
                               audio_dir_prediction='temporal',
@@ -108,15 +182,16 @@ def executeprediction(aimodel='speechenhancement', number=-1, thread_name=''):
                               n_fft=255,  # default 255
                               hop_length_fft=63)  # default 63
         # os.remove('temporal/input_{}.wav')
-        console.print("{}[AI MODEL] Speech-Enhancement finished. Saving {}".format(
-            thread_name, 'temporal/output_{}.wav'.format(number)), style="bold red")
+        console.print("{}[AI MODEL] Speech-Enhancement finished. Saving {}".format(thread_name,
+                                                                                   'temporal/output_{}.wav'.format(number)),
+                      style="bold red")
     # Here you can add a new models
     else:
         console.print("{}[AI MODEL] No aimodel selected".format(thread_name,))
         return False
 
 
-def play_one_file(filename_path='temporal/output.wav', thread_name='', device=''):
+def play_one_file(filename_path='temporal/output.wav', thread_name=None, device=None):
     """
     This script play file
     Example adapted from https://people.csail.mit.edu/hubert/pyaudio/
@@ -140,90 +215,58 @@ def play_one_file(filename_path='temporal/output.wav', thread_name='', device=''
         thread_name, filename_path), style="bold red")
 
 
-def record_process_play_thread(lock_record, lock_playing, device,p,stream):
-    """
-    This function record, process and play per thread
-    so, just create more threads if audio is not enough
-    fast.
-    """
+def record_only_thread(p, stream):
 
     global x
-    global y
-
-    x = 0
-    y = 0
+    global process_queue
 
     thread_name = threading.current_thread().name
-    # command1='pactl load-module module-pipe-source source_name=virtmic file=/tmp/virtmic format=s32le rate=8000 channels=1'
-    # result = os.popen(command1).read()
 
     while True:
-
-        lock_record.acquire()
-        record_one_second(
-            filename_path='temporal/input_{}.wav'.format(x), thread_name=thread_name,p=p,stream=stream)
-        x += 1
-        lock_record.release()
-
-
-
-
-        lock_playing.acquire()
-        executeprediction(aimodel='speechenhancement',
-                          number=x-1, thread_name=thread_name)
-        play_one_file(filename_path='temporal/output_{}.wav'.format(y),
-                        thread_name=thread_name, device=device)
-        y += 1
-        lock_playing.release()
-
-def load_input_device():
-    """
-    This function initialize mic input
-    object and returns the objects get data
-    """
-
-    p = pyaudio.PyAudio()  # initialize PyAudio object
-    stream = p.open(format=FORMAT_INPUT,
-                    channels=channels,
-                    rate=sample_rate_input,
-                    input=True,
-                    output=True,
-                    frames_per_buffer=chunk)  # open stream object as input & output
-
-    return p,stream
-
-def load_output_device():
-    """
-    This function initialize the speakers output
-    object and then return it to write data into it.
-    """
-
-    device = alsaaudio.PCM(channels=1, rate=sample_rate_output,
-                           format=32, periodsize=1000, device='default')
-
-    return device
+        record_one_second(filename_path='temporal/input_{}.wav'.format(x),
+                          thread_name=thread_name,
+                          p=p,
+                          stream=stream)
+        process_queue.append(x)  # append to the queue
+        console.print('{} RECORD: {}'.format(thread_name, str(process_queue)),
+                      style="bold green")
+        x += 1  # Last line, don't move
 
 
+def process_only_thread():
 
+    global process_queue
+    global player_queue
 
-def hello():
-    console.print("""------------------------------------------------------------------------------------
-  ______   ______   ______   __        ________   ______   __    __  ________  _______  
- /      \ |      \ /      \ |  \      |        \ /      \ |  \  |  \|        \|       \ 
-|  $$$$$$\ \$$$$$$|  $$$$$$\| $$      | $$$$$$$$|  $$$$$$\| $$\ | $$| $$$$$$$$| $$$$$$$\ 
-| $$__| $$  | $$  | $$   \$$| $$      | $$__    | $$__| $$| $$$\| $$| $$__    | $$__| $$
-| $$    $$  | $$  | $$      | $$      | $$  \   | $$    $$| $$$$\ $$| $$  \   | $$    $$
-| $$$$$$$$  | $$  | $$   __ | $$      | $$$$$   | $$$$$$$$| $$\$$ $$| $$$$$   | $$$$$$$\ 
-| $$  | $$ _| $$_ | $$__/  \| $$_____ | $$_____ | $$  | $$| $$ \$$$$| $$_____ | $$  | $$
-| $$  | $$|   $$ \ \$$    $$| $$     \| $$     \| $$  | $$| $$  \$$$| $$     \| $$  | $$
-\ $$   \$$ \$$$$$$  \$$$$$$  \$$$$$$$$ \$$$$$$$$ \$$   \$$ \$$   \$$ \$$$$$$$$ \$$   \$$
-                                                                                        
-Mantainer: Pablo Diaz
-Github: https://github.com/DZDL/aicleaner
-License: MIT
-Version: v0.1 [2020-03-08]
-Branch: Multithreading one way
-------------------------------------------------------------------------------------""", style="bold yellow")
+    thread_name = threading.current_thread().name
+
+    while True:
+        if len(process_queue) > 0:
+            # release the first queued but get the value
+
+            number = process_queue.pop(0)
+            console.print('{} PROCESS: {}'.format(thread_name,
+                                                  str(number)),
+                          style="bold green")
+            executeprediction(aimodel='speechenhancement',
+                              number=number,
+                              thread_name=thread_name)
+            player_queue.append(number)
+
+def play_only_thread(device):
+
+    global player_queue
+
+    thread_name = threading.current_thread().name
+    while True:
+        if len(player_queue) > 0:
+            number = player_queue.pop(0)
+            console.print('{} POPPED: {}'.format(thread_name,
+                                                 str(number)),
+                          style="bold green")
+            play_one_file(filename_path='temporal/output_{}.wav'.format(number),
+                          thread_name=thread_name,
+                          device=device)
 
 
 """
@@ -232,31 +275,33 @@ Branch: Multithreading one way
 
 if __name__ == '__main__':
 
-    lock_record = threading.Lock()
-    lock_playing = threading.Lock()
-
     hello()
-    
+    clean_temporal_files()
+
     device = load_output_device()  # only for linux pyalsaaudio
-    p,stream = load_input_device() # only for linux pyalsaaudio
+    p, stream = load_input_device()  # only for linux pyalsaaudio
+    x = 0
+    y = 0
 
     # start_time = time.time()
     # Record voice and generate temporal/input_x.wav, process and play
-    t1 = threading.Thread(target=record_process_play_thread, args=(
-        lock_record, lock_playing, device,p,stream), name='[T1]')
-    t2 = threading.Thread(target=record_process_play_thread, args=(
-        lock_record, lock_playing, device,p,stream), name='[T2]')
-    t3 = threading.Thread(target=record_process_play_thread, args=(
-        lock_record, lock_playing, device,p,stream), name='[T3]')
-    t4 = threading.Thread(target=record_process_play_thread, args=(
-        lock_record, lock_playing, device,p,stream), name='[T4]')
+    t1 = threading.Thread(target=record_only_thread,
+                          args=(p, stream,),
+                          name='[T1]')
+    t2_1 = threading.Thread(target=process_only_thread,
+                          name='[T2_1]')
+    # t2_2 = threading.Thread(target=process_only_thread,
+    #                       name='[T2_2]')
+    t3 = threading.Thread(target=play_only_thread,
+                          args=(device,),
+                          name='[T3]')
 
     t1.start()
-    t2.start()
+    t2_1.start()
+    # t2_2.start()
     t3.start()
-    t4.start()
 
     t1.join()
-    t2.join()
+    t2_1.join()
+    # t2_2.join()
     t3.join()
-    t4.join()
