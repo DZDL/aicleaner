@@ -4,7 +4,7 @@ import pyaudio
 import wave
 
 # the file name output you want to record into
-filename = "recorded.wav"
+filename = "temporal/recorded.wav"
 # set the chunk size of 1024 samples
 chunk = 1024
 # sample format

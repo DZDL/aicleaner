@@ -35,7 +35,7 @@ FORMAT_OUTPUT = pyaudio.paFloat32  # default LE_32bits or pyaudio.paFloat32
 channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
-record_seconds = 1.2  # default 1.1 due some restrictions
+record_seconds = 1.5  # default 1.1 due some restrictions
 x = 0
 y = 0
 process_queue = []  # ready to process
@@ -64,8 +64,9 @@ def hello():
 |Github: https://github.com/DZDL/aicleaner                                                    |
 |License: MIT                                                                                 |
 |Version: Alpha v0.1 [2020-03-08]                                                             |
+|Operative System detected: {}
 |Branch: Multithreading - 3 main threads (process thread can increase)                        |
-|---------------------------------------------------------------------------------------------|""", style="bold yellow")
+|---------------------------------------------------------------------------------------------|""".format(sys.platform), style="bold yellow")
 
 
 def clean_temporal_files():
@@ -122,10 +123,11 @@ def load_output_device():
                                format=32,
                                periodsize=1000,
                                device='default')
-        return device
-    console.print(
-        "[GLOBAL CONFIGS] Finish loading output devices.", style="bold green")
-    
+
+    console.print("[GLOBAL CONFIGS] Finish loading output devices.",
+                  style="bold green")
+
+    return device
 
 
 def record_one_second(filename_path='temporal/input.wav', thread_name=None, p=None, stream=None):
@@ -183,7 +185,7 @@ def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None, 
                               frame_length=8064,  # default 8064
                               hop_length_frame=8064,  # default 8064
                               n_fft=255,  # default 255
-                              hop_length_fft=63, # default 63
+                              hop_length_fft=63,  # default 63
                               output=output)
         # os.remove('temporal/input_{}.wav')
         console.print("{}[AI MODEL] Speech-Enhancement finished. Saving {}".format(thread_name,
