@@ -1,7 +1,7 @@
 # 1. ALL LIBRARIES
 # Import models: here we add new AI models.
 # from aimodels.speechenhancement.speechenhancement import load_model, prediction # dev
-from aimodels.speechenhancement.speechenhancement_production import prediction_production  # production
+from aimodels.speechenhancement.speechenhancement_production import prediction_production, prediction_production_data_as_narray  # production
 
 import os
 import sys
@@ -9,7 +9,7 @@ import threading  # to manage threads
 import time
 import wave  # to read and write audio files
 
-import numpy as np  # to treat audio data as numpy array
+import numpy # to treat audio data as numpy array
 from rich.console import Console  # For colorful output
 import soundcard as sc
 import soundfile as sf
@@ -32,10 +32,12 @@ channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
 record_seconds = 1.2  # default 1.1 due some restrictions
-x = 0
-y = 0
+x = 0 # index of record iteration
+y = 0 # index of play iteration
 process_queue = []  # ready to process
+data_queue=[] # numpy array inside an array ready to process
 player_queue = []  # ready to play
+data_predicted_queue=[] # numpy array inside an array ready to be played
 console.print("[GLOBAL CONFIGS] Finish loading variables and constants.",
               style="bold green")
 
@@ -119,28 +121,27 @@ def load_output_device():
     return default_speaker
 
 
-def record_one_second(filename_path='temporal/input.wav', thread_name=None, default_mic=None):
+def record_one_second(filename_path='temporal/input.wav', thread_name=None, default_mic=None, asnumpyarray=False):
     """
     This script record around one second with soundcard
     """
     console.print("{}[RECORD] Recording on {}".format(
         thread_name, filename_path), style="bold red")
 
-    start_time=time.time()
-    
-    data = default_mic.record(numframes=sample_rate_input*record_seconds,samplerate=sample_rate_input,channels=channels)
-    watch_1=time.time()-start_time
-    print("--- %s seconds ---" % (watch_1))
-    # save audio file in 'write bytes' mode
-    sf.write(filename_path, data, sample_rate_input, 'PCM_32')
-    watch_2=time.time()-watch_1
-    print("--- %s seconds ---" % (watch_2))
+    data = default_mic.record(numframes=sample_rate_input*record_seconds,
+                              samplerate=sample_rate_input, channels=channels)    
 
     console.print("{}[RECORD] Finished recording on {}".format(
         thread_name, filename_path), style="bold red")
 
+    if asnumpyarray==False:
+        # save audio file in 'write bytes' mode
+        sf.write(filename_path, data, sample_rate_input, 'PCM_32')
+    elif asnumpyarray==True:
+        return data
 
-def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None, output=None):
+
+def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None, output=None, asnumpyarray=False, mydata=None):
     """
     This function is a manager of ai models applied
     like filters to noisy mic
@@ -152,22 +153,31 @@ def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None, 
                                                                            aimodel,
                                                                            'temporal/input_{}.wav'.format(number)),
                       style="bold red")
-        prediction_production(weights_path='aimodels/speechenhancement/weights',
-                              name_model='model_unet',
-                              audio_dir_prediction='temporal',
-                              dir_save_prediction='temporal/',
-                              audio_input_prediction=[
-                                  'input_{}.wav'.format(number)],
-                              audio_output_prediction='output_{}.wav'.format(
-                                  number),
-                              sample_rate=8000,  # default 8000
-                              min_duration=1.0,  # default 1.1
-                              frame_length=8064,  # default 8064
-                              hop_length_frame=8064,  # default 8064
-                              n_fft=255,  # default 255
-                              hop_length_fft=63,  # default 63
-                              output=output)
-        # os.remove('temporal/input_{}.wav')
+        if (asnumpyarray == False):
+            prediction_production(weights_path='aimodels/speechenhancement/weights',
+                                  name_model='model_unet',
+                                  audio_dir_prediction='temporal',
+                                  dir_save_prediction='temporal/',
+                                  audio_input_prediction=[
+                                      'input_{}.wav'.format(number)],
+                                  audio_output_prediction='output_{}.wav'.format(
+                                      number),
+                                  sample_rate=8000,  # default 8000
+                                  min_duration=1.0,  # default 1.1
+                                  frame_length=8064,  # default 8064
+                                  hop_length_frame=8064,  # default 8064
+                                  n_fft=255,  # default 255
+                                  hop_length_fft=63,  # default 63
+                                  output=output)
+
+        elif (asnumpyarray == True):
+            mydata_predicted=prediction_production_data_as_narray(frame_length=8064,  # default 8064
+                                                 hop_length_frame=8064,  # default 8064
+                                                 n_fft=255,  # default 255
+                                                 hop_length_fft=63,  # default 63
+                                                 mydata=mydata,  # data as numpy
+                                                 output=output)
+
         console.print("{}[AI MODEL] Speech-Enhancement finished. Saving {}".format(thread_name,
                                                                                    'temporal/output_{}.wav'.format(number)),
                       style="bold red")
@@ -177,7 +187,7 @@ def executeprediction(aimodel='speechenhancement', number=-1, thread_name=None, 
         return False
 
 
-def play_one_file(filename_path='temporal/output.wav', thread_name=None, device=None):
+def play_one_file(filename_path='temporal/output.wav', thread_name=None, device=None,asnumpyarray=False,audiodata=None):
     """
     This script play file
     Example adapted from https://people.csail.mit.edu/hubert/pyaudio/
@@ -185,31 +195,35 @@ def play_one_file(filename_path='temporal/output.wav', thread_name=None, device=
     console.print("{}[PLAY] Playing {}".format(thread_name,
                                                filename_path),
                   style="bold red")
-    if (sys.platform == 'windows'):
-        """
-        Only Windows support
-        """
-        # sound = AudioSegment.from_file(filename_path)
-        # play(sound)
-        # Uncomplete
-        pass
-    elif (sys.platform == 'macos'):
-        """
-        Only macos support
-        """
-        pass
-    elif (sys.platform == 'linux'):
-        """
-        Only linux support
-        """
-        with wave.open(filename_path, 'rb') as f:
-            periodsize = 1000
-            # Read data
-            data = f.readframes(periodsize)
-            while data:
-                # Read data from stdin
-                device.write(data)
+    if (asnumpyarray==False):
+        if (sys.platform == 'windows'):
+            """
+            Only Windows support
+            """
+            # sound = AudioSegment.from_file(filename_path)
+            # play(sound)
+            # Uncomplete
+            pass
+        elif (sys.platform == 'macos'):
+            """
+            Only macos support
+            """
+            pass
+        elif (sys.platform == 'linux'):
+            """
+            Only linux support
+            """
+            with wave.open(filename_path, 'rb') as f:
+                periodsize = 1000
+                # Read data
                 data = f.readframes(periodsize)
+                while data:
+                    # Read data from stdin
+                    device.write(data)
+                    data = f.readframes(periodsize)
+    elif (asnumpyarray==True):
+        default_speaker.play(audiodata/numpy.max(audiodata), samplerate=sample_rate_output)
+        pass
 
     console.print("{}[PLAY] Finish audio playing {}".format(thread_name,
                                                             filename_path),
@@ -220,14 +234,17 @@ def record_only_thread(default_mic):
 
     global x
     global process_queue
+    global data_queue
 
     thread_name = threading.current_thread().name
 
     while True:
-        record_one_second(filename_path='temporal/input_{}.wav'.format(x),
+        mydata=record_one_second(filename_path='temporal/input_{}.wav'.format(x),
                           thread_name=thread_name,
-                          default_mic=default_mic)
-        process_queue.append(x)  # append to the queue
+                          default_mic=default_mic,
+                          asnumpyarray=True) 
+        process_queue.append(x)  # append index to the queue
+        data_queue.append(mydata) # append data to the queue
         console.print('{} RECORD: {}'.format(thread_name, str(process_queue)),
                       style="bold green")
         x += 1  # Last line, don't move
@@ -237,24 +254,32 @@ def process_only_thread(lock_process):
 
     global process_queue
     global player_queue
+    global data_queue
 
     thread_name = threading.current_thread().name
 
     while True:
         if len(process_queue) > 0:
-            # lock_process.acquire()
             # release the first queued but get the value
-
             number = process_queue.pop(0)
+            mydata=data_queue.pop(0)
             console.print('{} PROCESS: {}'.format(thread_name,
                                                   str(number)),
                           style="bold green")
 
-            # lock_process.release()
+            # With wav file
+            # executeprediction(aimodel='speechenhancement',
+            #                   number=number,
+            #                   thread_name=thread_name,
+            #                   output=False)  # change to True to see other outputs
+
+            # With data as numpy array
             executeprediction(aimodel='speechenhancement',
                               number=number,
                               thread_name=thread_name,
-                              output=False) # change to True to see other outputs
+                              output=None,
+                              asnumpyarray=True,
+                              mydata=mydata)
             player_queue.append(number)
 
 
@@ -266,6 +291,7 @@ def play_only_thread(device):
     while True:
         if len(player_queue) > 0:
             number = player_queue.pop(0)
+            mydata_predicted=data_predicted_queue.pop(0)
             console.print('{} POPPED: {}'.format(thread_name,
                                                  str(number)),
                           style="bold green")

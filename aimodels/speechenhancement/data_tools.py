@@ -71,7 +71,7 @@ def audio_to_magnitude_db_and_phase(n_fft, hop_length_fft, audio):
 
 
 def numpy_audio_to_matrix_spectrogram(numpy_audio, dim_square_spec, n_fft, hop_length_fft):
-    """This function takes as input a numpy audi of size (nb_frame,frame_length), and return
+    """This function takes as input a numpy audio of size (nb_frame,frame_length), and return
     a numpy containing the matrix spectrogram for amplitude in dB and phase. It will have the size
     (nb_frame,dim_square_spec,dim_square_spec)"""
 
