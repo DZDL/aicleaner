@@ -324,9 +324,9 @@ if __name__ == '__main__':
                           args=(lock_process,),
                           name='[T2]')
 
-    t4 = threading.Thread(target=process_only_thread,
-                          args=(lock_process,),
-                          name='[T4]')
+    # t4 = threading.Thread(target=process_only_thread,
+    #                       args=(lock_process,),
+    #                       name='[T4]')
 
     # Play voice continously by queue
     t3 = threading.Thread(target=play_only_thread,
@@ -338,9 +338,9 @@ if __name__ == '__main__':
     t1.start()
     t2.start()
     t3.start()
-    t4.start()
+    # t4.start()
 
     t1.join()
     t2.join()
     t3.join()
-    t4.join()
+    # t4.join()

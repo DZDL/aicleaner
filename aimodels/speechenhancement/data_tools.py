@@ -70,19 +70,25 @@ def audio_to_magnitude_db_and_phase(n_fft, hop_length_fft, audio):
     return stftaudio_magnitude_db, stftaudio_phase
 
 
-def numpy_audio_to_matrix_spectrogram(numpy_audio, dim_square_spec, n_fft, hop_length_fft):
+def numpy_audio_to_matrix_spectrogram(numpy_audio, dim_square_spec, n_fft, hop_length_fft,output=False):
     """This function takes as input a numpy audi of size (nb_frame,frame_length), and return
     a numpy containing the matrix spectrogram for amplitude in dB and phase. It will have the size
     (nb_frame,dim_square_spec,dim_square_spec)"""
+
 
     nb_audio = numpy_audio.shape[0]
 
     m_mag_db = np.zeros((nb_audio, dim_square_spec, dim_square_spec))
     m_phase = np.zeros((nb_audio, dim_square_spec, dim_square_spec), dtype=complex)
 
+
     for i in range(nb_audio):
         m_mag_db[i, :, :], m_phase[i, :, :] = audio_to_magnitude_db_and_phase(
             n_fft, hop_length_fft, numpy_audio[i])
+    if output==True:
+        print(numpy_audio)
+        print( np.array(nb_audio).shape)
+        print('m_mag_db: {}, m_phase: {}'.format( np.array(m_mag_db).shape, np.array(m_phase).shape))
 
     return m_mag_db, m_phase
 
