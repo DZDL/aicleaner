@@ -158,7 +158,7 @@ def prediction_production_data_as_narray(frame_length,
     # Prediction using loaded network
     print("------------------LOADED MODEL-----------------")
     X_pred = predict_with_tensorflow_server(X_in, output)
-    print("------------------END LOADED MODEL-----------------")
+    print("------------------END PREDICTION MODEL-----------------")
     # Rescale back the noise model
     inv_sca_X_pred = inv_scaled_ou(X_pred)
     # Remove noise model from noisy speech
@@ -171,7 +171,8 @@ def prediction_production_data_as_narray(frame_length,
     # Number of frames
     nb_samples = audio_denoise_recons.shape[0]
     # Save all frames in one file
-    denoise_long = audio_denoise_recons.reshape(1,
-                                                nb_samples * frame_length)*10
+    denoise_long = audio_denoise_recons.reshape(1,nb_samples * frame_length)*10
+
+    sf.write('temporal/output.wav', denoise_long[0, :], 8000, 'PCM_24')
 
     return denoise_long[0, :]

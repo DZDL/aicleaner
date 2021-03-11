@@ -91,7 +91,8 @@ def prediction(weights_path,
     m_amp_db_audio,  m_pha_audio = numpy_audio_to_matrix_spectrogram(audio,
                                                                      dim_square_spec,
                                                                      n_fft,
-                                                                     hop_length_fft)
+                                                                     hop_length_fft,
+                                                                     output=True)
 
     # global scaling to have distribution -1/1
     X_in = scaled_in(m_amp_db_audio)
