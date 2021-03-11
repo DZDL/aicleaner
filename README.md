@@ -10,6 +10,7 @@
 </p>
 
 >Name of the project may change on future.
+>Currently problems playing, recording and its delay.
 <hr style="height:2px;border-width:0;color:gray;background-color:gray">
 
 <!-- TABLE OF CONTENTS -->
