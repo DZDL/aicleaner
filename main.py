@@ -31,14 +31,14 @@ chunk = 1024  # set the chunk size of 1024 samples
 channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
-record_seconds = 1.0  # default 1.1 due some restrictions
+record_seconds = 2  # default 1.1 due some restrictions
 x = 0  # index of record iteration
 y = 0  # index of play iteration
 process_queue = []  # ready to process
 data_queue = []  # numpy array inside an array ready to process
 player_queue = []  # ready to play
 data_predicted_queue = []  # numpy array inside an array ready to be played
-INITIAL_DELAY_SECONDS=0.5 # initial delay in seconds to create threads
+INITIAL_DELAY_SECONDS = 1  # initial delay in seconds to create threads
 console.print("[GLOBAL CONFIGS] Finish loading variables and constants.",
               style="bold green")
 
@@ -99,10 +99,11 @@ def load_input_device():
 
     # get the current default microphone on your system:
     default_mic = sc.default_microphone()
+    recorder = default_mic.recorder(44100, channels=1, blocksize=256)
 
     console.print("[GLOBAL CONFIGS] Finish loading input devices.",
                   style="bold green")
-    return default_mic
+    return recorder
 
 
 def load_output_device():
@@ -115,11 +116,13 @@ def load_output_device():
 
     # get the current default speaker on your system:
     default_speaker = sc.default_speaker()
+    player=default_speaker.player(48000, channels=2, blocksize=512)
+    
 
     console.print("[GLOBAL CONFIGS] Finish loading output devices.",
                   style="bold green")
 
-    return default_speaker
+    return player
 
 
 def record_one_second(filename_path='temporal/input.wav',
@@ -163,6 +166,7 @@ def executeprediction(aimodel='speechenhancement',
                                                                            aimodel,
                                                                            'temporal/input_{}.wav'.format(number)),
                       style="bold red")
+        mydata_predicted=0
         if (asnumpyarray == False):
             prediction_production(weights_path='aimodels/speechenhancement/weights',
                                   name_model='model_unet',
@@ -246,42 +250,41 @@ def play_one_file(filename_path='temporal/output.wav',
                   style="bold red")
 
 
-def record_only_thread(default_mic):
+def record_only_thread(default_mic_recorder):
 
     global x
     global process_queue
     global data_queue
+    global record_seconds
 
     thread_name = threading.current_thread().name
-    start_time=time.time()
+    start_time = time.time()
 
-    time_seconds_array=[]
+    numframes = int(44100*record_seconds)
 
-    while True:
-        # time_seconds=round(time.time()-start_time,2)
-        # time_seconds_array.append(time_seconds)
-        # print(time_seconds_array)
-        mydata = record_one_second(filename_path='temporal/input_{}.wav'.format(x),
-                                   thread_name=thread_name, #+'[{}]'.format(time_seconds)
-                                   default_mic=default_mic,
-                                   asnumpyarray=True)
-        process_queue.append(x)  # append index to the queue
-        data_queue.append(mydata)  # append data to the queue
-        console.print('{} RECORD: {}'.format(thread_name, str(process_queue)),
-                      style="bold green")
-        x += 1  # Last line, don't move
+    with default_mic_recorder as r:
+        while True:
+            data = r.record(numframes)  # record each _x seconds_
+            data_queue.append(data)  # append data to the queue
+            process_queue.append(x)  # append index
+            console.print('{} RECORD: {}'.format(thread_name, str(process_queue)),
+                          style="bold green")
+            x += 1  # Last line, don't move
 
 
-def process_only_thread(lock_process):
+def process_only_thread():
 
     global process_queue
     global player_queue
     global data_queue
+    global INITIAL_DELAY_SECONDS
+
+    time.sleep(INITIAL_DELAY_SECONDS)
 
     thread_name = threading.current_thread().name
 
     while True:
-        if len(process_queue) > 0:
+        if len(data_queue) > 0:
             # release the first queued but get the value
             number = process_queue.pop(0)
             mydata = data_queue.pop(0)
@@ -304,25 +307,35 @@ def process_only_thread(lock_process):
                                                  mydata=mydata)
             player_queue.append(number)
             data_predicted_queue.append(mydata_predicted)
+        else:
+            time.sleep(0.05)
 
 
-def play_only_thread(device):
+def play_only_thread(default_speaker_player):
 
     global player_queue
 
     thread_name = threading.current_thread().name
-    while True:
-        if len(player_queue) > 0:
-            number = player_queue.pop(0)
-            mydata_predicted = data_predicted_queue.pop(0)
-            console.print('{} POPPED: {}'.format(thread_name,
-                                                 str(number)),
-                          style="bold green")
-            play_one_file(filename_path='temporal/output_{}.wav'.format(number),
-                          thread_name=thread_name,
-                          device=device,
-                          asnumpyarray=True,
-                          audiodata=mydata_predicted)
+
+    time.sleep(INITIAL_DELAY_SECONDS*2)
+
+    with default_speaker_player as p:
+        while True:
+            if len(player_queue) > 0:
+                number = player_queue.pop(0)
+                mydata_predicted = data_predicted_queue.pop(0)
+                console.print('{} POPPED: {}'.format(thread_name,
+                                                    str(number)),
+                            style="bold green")
+
+                p.play(mydata_predicted/numpy.max(mydata_predicted))
+                # play_one_file(filename_path='temporal/output_{}.wav'.format(number),
+                #             thread_name=thread_name,
+                #             device=p,
+                #             asnumpyarray=True,
+                #             audiodata=mydata_predicted)
+            else:
+                time.sleep(0.05)
 
 
 """
@@ -335,23 +348,22 @@ if __name__ == '__main__':
 
     hello()  # Logo and info of the project
     clean_temporal_files()  # Clean files by path
-    default_speaker = load_output_device()
-    default_mic = load_input_device()
+    default_speaker_player = load_output_device()
+    default_mic_recorder = load_input_device()
     x = 0
     y = 0
     process_queue = []  # ready to process
     player_queue = []  # ready to play
-    lock_process = threading.Lock()
+    # lock_process = threading.Lock()
 
     time.sleep(INITIAL_DELAY_SECONDS)  # drivers slow start needed
     # Record voice continously
     t1 = threading.Thread(target=record_only_thread,
-                          args=(default_mic,),
+                          args=(default_mic_recorder,),
                           name='[T1]')
 
     # Process voice continously by queue
     t2 = threading.Thread(target=process_only_thread,
-                          args=(lock_process,),
                           name='[T2]')
 
     # t4 = threading.Thread(target=process_only_thread,
@@ -359,18 +371,18 @@ if __name__ == '__main__':
     #                       name='[T4]')
 
     # # Play voice continously by queue
-    # t3 = threading.Thread(target=play_only_thread,
-    #                       args=(default_speaker,),
-    #                       name='[T3]')
+    t3 = threading.Thread(target=play_only_thread,
+                          args=(default_speaker_player,),
+                          name='[T3]')
 
-    # time.sleep(INITIAL_DELAY_SECONDS)  # drivers slow start needed
     # Charge and join threads
     t1.start()
     t2.start()
-    # t3.start()
-    # t4.start()
+    t3.start()
 
     t1.join()
     t2.join()
-    # t3.join()
+    # t4.start()
+
+    t3.join()
     # t4.join()
