@@ -103,8 +103,8 @@ def numpy_audio_to_matrix_spectrogram(numpy_audio, dim_square_spec, n_fft, hop_l
     a numpy containing the matrix spectrogram for amplitude in dB and phase. It will have the size
     (nb_frame,dim_square_spec,dim_square_spec)"""
 
-    # default numpy_audio.shape[0] however it gives some other stuff
-    nb_audio = 1
+    #default numpy_audio.shape[0] however it gives some other stuff
+    nb_audio = numpy_audio.shape[0]
 
     m_mag_db = np.zeros((nb_audio, dim_square_spec, dim_square_spec))
     m_phase = np.zeros(

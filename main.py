@@ -13,7 +13,7 @@ import numpy  # to treat audio data as numpy array
 from rich.console import Console  # For colorful output
 
 from aimodels.speechenhancement.speechenhancement_production import (  # production
-    prediction_production, 
+    prediction_production,
     prediction_production_data_as_narray)
 
 import soundfile as sf
@@ -127,7 +127,7 @@ def executeprediction(aimodel='speechenhancement',
                                                                     hop_length_frame=8064,  # default 8064
                                                                     n_fft=255,  # default 255
                                                                     hop_length_fft=63,  # default 63
-                                                                    sample_rate=sample_rate_input, # default 8000
+                                                                    sample_rate=sample_rate_input,  # default 8000
                                                                     mydata=mydata,  # data as numpy
                                                                     output=output)
 
@@ -168,7 +168,7 @@ def record_only_Process(queue_data_recorded,
             queue_data_recorded.put(data)
             queue_data_recorded_index.put(x)
 
-            # sf.write('temporal/input_{}.wav'.format(x), data, sample_rate_input, 'PCM_32')
+            sf.write('temporal/input_{}.wav'.format(x), data, sample_rate_input, 'PCM_32')
 
             console.print('{} RECORD: {}'.format(process_name, str(x)),
                           style="bold green")
@@ -203,6 +203,8 @@ def process_only_Process(data_recorded,
 
             data_to_play_index.put(number)
             data_to_play.put(mydata_predicted)
+
+            break
         else:
             time.sleep(0.05)
 
@@ -236,6 +238,33 @@ def play_only_Process(queue_data_to_play,
                 time.sleep(0.01)
 
 
+def power_on_tensorflow_serving_Process():
+
+    api_port = 8501
+    model_name = 'model_unet'
+    model_base_path = '/home/god/Desktop/gits/aicleaner/aimodels/speechenhancement/serving/'
+
+    command = 'tensorflow_model_server \
+                --rest_api_port={} \
+                --model_name={} \
+                --model_base_path="{}"'.format(api_port,
+                                        model_name,
+                                        model_base_path)
+
+    process_name = current_process().name
+
+    console.print('{} TENSORFLOW SERVER TURNING ON...'.format(process_name),
+                          style="bold green")
+    # Turn on
+    os.popen(command)
+
+    console.print('{} TENSORFLOW SERVER READY.'.format(process_name),
+                          style="bold green")
+
+    # no return
+
+
+
 """
 4. LOOP ITERATION TO PROCESS DIRTY TO CLEAN AUDIO
 """
@@ -255,23 +284,26 @@ if __name__ == '__main__':
     data_to_play = Queue()
 
     time.sleep(INITIAL_DELAY_SECONDS)  # drivers slow start needed
+
+
+    # Turn on server of tensorflow serving
+    p0_server=Process(target=power_on_tensorflow_serving_Process,name='[SERVER]')
+    p0_server.start()
+    p0_server.join()
+
     # Record voice continously
-    p1 = Process(target=record_only_Process, args=(
-        (data_recorded), (data_recorded_index)), name='[P1]')
+    p1 = Process(target=record_only_Process, args=((data_recorded), 
+                                                    (data_recorded_index)), name='[P1]')
+    # Process as queued
     p2 = Process(target=process_only_Process, args=((data_recorded),
-                                                    (data_recorded_index), (data_to_play), (data_to_play_index)), name='[P2]')
-    p3 = Process(target=play_only_Process, args=(
-        (data_to_play), (data_to_play_index)), name='[P3]')
+                                                    (data_recorded_index), 
+                                                    (data_to_play),
+                                                    (data_to_play_index)), name='[P2]')
+    # Play as finished processed
+    p3 = Process(target=play_only_Process, args=((data_to_play), 
+                                                 (data_to_play_index)), name='[P3]')
 
-    # Process voice continously by queue
-    # p2 = Process(target=process_only_thread,
-    #                       name='[T2]')
-
-    # t4 = threading.Thread(target=process_only_thread,
-    #                       args=(lock_process,),
-    #                       name='[T4]')
-
-    # # Play voice continously by queue
+    
 
     # Charge and join threads
     p1.start()
