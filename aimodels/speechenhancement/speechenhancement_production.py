@@ -12,6 +12,7 @@ tensorflow_model_server --rest_api_port=8501 \
 --model_name=model_unet \ 
 --model_base_path="/home/god/Desktop/gits/aicleaner/aimodels/speechenhancement/serving/"
 """
+
 import json
 import librosa
 import numpy as np
@@ -19,18 +20,23 @@ import requests
 import soundfile as sf
 import tensorflow as tf
 from tensorflow.keras.models import model_from_json
-# Calling from file path
+
 
 try:
-    from data_tools import (audio_files_to_numpy, inv_scaled_ou,
-                             matrix_spectrogram_to_numpy_audio,
-                             numpy_audio_to_matrix_spectrogram, 
-                             scaled_in)
+    # Calling from file path
+    from data_tools import (audio_files_to_numpy,
+                            audio_files_to_numpy_from_numpy, 
+                            inv_scaled_ou,
+                            matrix_spectrogram_to_numpy_audio,
+                            numpy_audio_to_matrix_spectrogram, 
+                            scaled_in)
 
 except Exception as e:
     # Calling from other paths
     print(e)
-    from .data_tools import (audio_files_to_numpy, inv_scaled_ou,
+    from .data_tools import (audio_files_to_numpy,
+                             audio_files_to_numpy_from_numpy, 
+                             inv_scaled_ou,
                              matrix_spectrogram_to_numpy_audio,
                              numpy_audio_to_matrix_spectrogram, 
                              scaled_in)
@@ -119,7 +125,7 @@ def prediction_production(weights_path,
     # print(hop_length_fft)
     audio_denoise_recons = matrix_spectrogram_to_numpy_audio(X_denoise,
                                                              m_pha_audio,
-                                                             frame_length,
+                                                             hop_length_frame,
                                                              hop_length_fft)
     # Number of frames
     nb_samples = audio_denoise_recons.shape[0]
@@ -134,13 +140,17 @@ def prediction_production(weights_path,
 
 
 def prediction_production_data_as_narray(frame_length,
+                                         sample_rate,
                                          hop_length_frame,
                                          n_fft,
                                          hop_length_fft,
                                          mydata,
                                          output):
 
-    audio = mydata
+    audio = audio_files_to_numpy_from_numpy(audio_data_numpy=np.asarray([mydata]),
+                                            sample_rate=sample_rate,
+                                            frame_length=frame_length,
+                                            hop_length_frame=hop_length_frame)
     # Dimensions of squared spectrogram
     dim_square_spec = int(n_fft / 2) + 1
     # print(dim_square_spec)
@@ -171,8 +181,9 @@ def prediction_production_data_as_narray(frame_length,
     # Number of frames
     nb_samples = audio_denoise_recons.shape[0]
     # Save all frames in one file
-    denoise_long = audio_denoise_recons.reshape(1,nb_samples * frame_length)*10
+    denoise_long = audio_denoise_recons.reshape(
+        1, nb_samples * frame_length)*10
 
-    sf.write('temporal/output.wav', denoise_long[0, :], 8000, 'PCM_24')
+    sf.write('temporal/output.wav', denoise_long[0, :], sample_rate, 'PCM_32')
 
     return denoise_long[0, :]
