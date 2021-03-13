@@ -87,6 +87,8 @@ def prediction(weights_path,
     print("AUDIO LOADED--------------------")                                 
     print(audio)
 
+    print(len(audio[0]))
+
     print("OTHERS--------------------")   
     # Dimensions of squared spectrogram
     dim_square_spec = int(n_fft / 2) + 1
@@ -96,8 +98,7 @@ def prediction(weights_path,
     m_amp_db_audio,  m_pha_audio = numpy_audio_to_matrix_spectrogram(audio,
                                                                      dim_square_spec,
                                                                      n_fft,
-                                                                     hop_length_fft,
-                                                                     output=True)
+                                                                     hop_length_fft)
 
     # global scaling to have distribution -1/1
     X_in = scaled_in(m_amp_db_audio)

@@ -10,7 +10,7 @@ License: MIT
 """
 tensorflow_model_server --rest_api_port=8501 \ 
 --model_name=model_unet \ 
---model_base_path="/home/god/Desktop/gits/aicleaner/aimodels/speechenhancement/serving/"
+--model_base_path="/path/to/"
 """
 
 import json
@@ -19,27 +19,28 @@ import numpy as np
 import requests
 import soundfile as sf
 import tensorflow as tf
+import samplerate
 from tensorflow.keras.models import model_from_json
 
 
 try:
     # Calling from file path
-    from data_tools import (audio_files_to_numpy,
-                            audio_files_to_numpy_from_numpy, 
-                            inv_scaled_ou,
-                            matrix_spectrogram_to_numpy_audio,
-                            numpy_audio_to_matrix_spectrogram, 
-                            scaled_in)
+    from data_tools_production import (audio_files_to_numpy,
+                                        audio_files_to_numpy_from_numpy, 
+                                        inv_scaled_ou,
+                                        matrix_spectrogram_to_numpy_audio,
+                                        numpy_audio_to_matrix_spectrogram, 
+                                        scaled_in)
 
 except Exception as e:
     # Calling from other paths
     print(e)
-    from .data_tools import (audio_files_to_numpy,
-                             audio_files_to_numpy_from_numpy, 
-                             inv_scaled_ou,
-                             matrix_spectrogram_to_numpy_audio,
-                             numpy_audio_to_matrix_spectrogram, 
-                             scaled_in)
+    from .data_tools_production import (audio_files_to_numpy,
+                                        audio_files_to_numpy_from_numpy, 
+                                        inv_scaled_ou,
+                                        matrix_spectrogram_to_numpy_audio,
+                                        numpy_audio_to_matrix_spectrogram, 
+                                        scaled_in)
 
 
 def predict_with_tensorflow_server(unwrapped_data, output):
@@ -60,11 +61,10 @@ def predict_with_tensorflow_server(unwrapped_data, output):
     if output == True:
         print("[TENSORFLOW SERVER] JSON RESPONSE ---------------------")
         print(json_response.text[:400]+'"continue...')
+    # print(json_response.text)        
     predictions = json.loads(json_response.text)['predictions']
     myreturn = np.asarray(predictions)
     return myreturn
-
-    #show(0, 'The model thought this was a {} (class {}), and it was actually a {} (class {})'.format(class_names[np.argmax(predictions[0])], np.argmax(predictions[0]), class_names[test_labels[0]], test_labels[0]))
 
 
 def prediction_production(weights_path,
@@ -146,11 +146,23 @@ def prediction_production_data_as_narray(frame_length,
                                          hop_length_fft,
                                          mydata,
                                          output):
+    
+    print("AUDIO LOADED--------------------") 
+    # audio = audio_files_to_numpy_from_numpy(audio_data_numpy=mydata,
+    #                                         sample_rate=sample_rate,
+    #                                         frame_length=frame_length,
+    #                                         hop_length_frame=hop_length_frame)
+    sample_rate_output=800
+    sample_rate_input=44100
+    division=128/1400 # should be 44100/800
+    audio=np.asarray([np.hstack(mydata),])
+    audio_downsampled = samplerate.resample(audio[0], division, 'sinc_best')  
+    audio=np.asarray([audio_downsampled,])
+    # we need to downsample the audio array
 
-    audio = audio_files_to_numpy_from_numpy(audio_data_numpy=np.asarray([mydata]),
-                                            sample_rate=sample_rate,
-                                            frame_length=frame_length,
-                                            hop_length_frame=hop_length_frame)
+    print(audio)
+
+    # print(len(audio[0]))
     # Dimensions of squared spectrogram
     dim_square_spec = int(n_fft / 2) + 1
     # print(dim_square_spec)
@@ -184,6 +196,6 @@ def prediction_production_data_as_narray(frame_length,
     denoise_long = audio_denoise_recons.reshape(
         1, nb_samples * frame_length)*10
 
-    sf.write('temporal/output.wav', denoise_long[0, :], sample_rate, 'PCM_32')
+    # sf.write('temporal/output.wav', denoise_long[0, :], sample_rate, 'PCM_32')
 
     return denoise_long[0, :]

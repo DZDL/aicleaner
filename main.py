@@ -168,7 +168,7 @@ def record_only_Process(queue_data_recorded,
             queue_data_recorded.put(data)
             queue_data_recorded_index.put(x)
 
-            sf.write('temporal/input_{}.wav'.format(x), data, sample_rate_input, 'PCM_32')
+            # sf.write('temporal/input_{}.wav'.format(x), data, sample_rate_input, 'PCM_32')
 
             console.print('{} RECORD: {}'.format(process_name, str(x)),
                           style="bold green")
