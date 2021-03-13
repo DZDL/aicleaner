@@ -60,9 +60,9 @@ def hello():
 |Mantainer: Pablo Diaz (github.com/zurmad)                                                    |
 |Github: https://github.com/DZDL/aicleaner                                                    |
 |License: MIT                                                                                 |
-|Version: Alpha v0.1 [2020-03-08]                                                             |
+|Version: Alpha v0.1 [2020-03-13]                                                             |
 |Operative System detected: {}
-|Branch: Multithreading - 3 main threads (process thread can increase)                        |
+|Branch: MultiProcessing - 4 main Process (Record, Process, Play, Server)                     |
 |---------------------------------------------------------------------------------------------|""".format(sys.platform), style="bold yellow")
 
 

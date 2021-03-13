@@ -1,4 +1,5 @@
-#pyalsaaudio
-playsound
-pyaudio
-PyGObject
+rich>=9.12.4
+SoundFile>=0.10.3.post1
+SoundCard>=0.4.0 # from source, not released in pypi yet
+sounddevice>=0.4.1
+numpy>=1.20.1
