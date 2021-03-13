@@ -33,7 +33,10 @@ def audio_files_to_numpy(audio_dir, list_audio_files, sample_rate, frame_length,
         else:
             print(
                 f"The following file {os.path.join(audio_dir,file)} is below the min duration")
-        
+    print("LIST--------------------")
+    print(list_sound_array)
+    print("VSTACK -------------------")
+    print(np.vstack(list_sound_array))
 
     return np.vstack(list_sound_array)
 

@@ -10,7 +10,7 @@ License: MIT
 """
 tensorflow_model_server --rest_api_port=8501 \ 
 --model_name=model_unet \ 
---model_base_path="/path/to/"
+--model_base_path="/path/to/serving/"
 """
 
 import json
@@ -19,9 +19,10 @@ import numpy as np
 import requests
 import soundfile as sf
 import tensorflow as tf
-import samplerate
 from tensorflow.keras.models import model_from_json
-
+from librosa import resample
+#import sys # only for debug
+#np.set_printoptions(threshold=sys.maxsize) #only for debug
 
 try:
     # Calling from file path
@@ -148,19 +149,37 @@ def prediction_production_data_as_narray(frame_length,
                                          output):
     
     print("AUDIO LOADED--------------------") 
-    # audio = audio_files_to_numpy_from_numpy(audio_data_numpy=mydata,
-    #                                         sample_rate=sample_rate,
-    #                                         frame_length=frame_length,
-    #                                         hop_length_frame=hop_length_frame)
-    sample_rate_output=800
-    sample_rate_input=44100
-    division=128/1400 # should be 44100/800
-    audio=np.asarray([np.hstack(mydata),])
-    audio_downsampled = samplerate.resample(audio[0], division, 'sinc_best')  
-    audio=np.asarray([audio_downsampled,],dtype=np.float32)
-    # we need to downsample the audio array
 
-    print(audio)
+    # sf.write('temporal/mydata.wav', mydata, sample_rate, 'PCM_32')
+    
+    # with open('temporal/audio_as_numpy.txt', 'w') as f:
+    #         f.write(str(mydata))
+
+    ################################################
+    ## 2nd method (FAILED due not resampled)
+    ################################################
+    # mydata_resampled=resample(mydata, 44100, 8000, res_type='kaiser_best')
+    # # mydata=np.hstack(mydata)
+    # a=frame_length # frame_length
+    # b=hop_length_frame # hop_length_frame
+    # y = [mydata_resampled[start:start + a] for start in range(0, len(mydata_resampled) - a + 1, b)] 
+    # audio=np.vstack(y)
+
+    ################################################
+    ## 3nd method (Success)
+    ################################################
+
+    myaudio=np.asarray(mydata)
+    myaudio=np.hstack(myaudio)
+    myaudio_resampled=resample(myaudio, 44100, 8000, res_type='kaiser_best')
+
+    a=frame_length # frame_length
+    b=hop_length_frame # hop_length_frame
+    y = [myaudio_resampled[start:start + a] for start in range(0, len(myaudio_resampled) - a + 1, b)] 
+    audio=np.vstack(y)
+    
+
+    # print(audio)
 
     # print(len(audio[0]))
     # Dimensions of squared spectrogram

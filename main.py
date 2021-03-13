@@ -35,8 +35,8 @@ console.print("[GLOBAL CONFIGS] Loading variables and constants...",
 channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
-record_seconds = 2  # default 1.1 due some restrictions
-INITIAL_DELAY_SECONDS = 1.2  # initial delay in seconds to create threads
+record_seconds = 1.2  # default 1.1 due some restrictions
+INITIAL_DELAY_SECONDS = 0.5  # initial delay in seconds to create threads
 console.print("[GLOBAL CONFIGS] Finish loading variables and constants.",
               style="bold green")
 
@@ -151,10 +151,10 @@ def record_only_Process(queue_data_recorded,
     start_time = time.time()
 
     x = 0
-    numframes = int(44100*record_seconds)
+    numframes = int(sample_rate_input*record_seconds)
 
     default_mic = sc.default_microphone()
-    recorder = default_mic.recorder(44100, channels=1, blocksize=256)
+    recorder = default_mic.recorder(sample_rate_input, channels=channels, blocksize=256)
 
     with recorder as r:
         while True:
@@ -175,23 +175,22 @@ def record_only_Process(queue_data_recorded,
             x += 1  # Last line, don't move
 
 
-def process_only_Process(data_recorded,
-                         data_recorded_index,
-                         data_to_play,
-                         data_to_play_index):
+def process_only_Process(queue_data_recorded,
+                         queue_data_recorded_index,
+                         queue_data_to_play,
+                         queue_data_to_play_index):
 
     time.sleep(INITIAL_DELAY_SECONDS)
     process_name = current_process().name
 
     while True:
 
-        number = data_recorded_index.get()
+        number = queue_data_recorded_index.get()
         if number != -1:
             # release the first queued but get the value
-            mydata = data_recorded.get()
+            mydata = queue_data_recorded.get()
             console.print('{} PROCESS: {}'.format(process_name,
-                                                  str(number)),
-                          style="bold green")
+                                                  str(number)),style="bold green")
 
             # With data as numpy array
             mydata_predicted = executeprediction(aimodel='speechenhancement',
@@ -200,12 +199,10 @@ def process_only_Process(data_recorded,
                                                  output=None,
                                                  asnumpyarray=True,
                                                  mydata=mydata)
-
-            data_to_play_index.put(number)
-            data_to_play.put(mydata_predicted)
-
+            queue_data_to_play_index.put(number)
+            queue_data_to_play.put(mydata_predicted)
         else:
-            time.sleep(0.05)
+            time.sleep(0.05) # to don't stress cpu
 
 
 def play_only_Process(queue_data_to_play,
@@ -218,8 +215,7 @@ def play_only_Process(queue_data_to_play,
     time.sleep(INITIAL_DELAY_SECONDS*2)
 
     default_speaker = sc.default_speaker()
-    default_speaker_player = default_speaker.player(
-        48000, channels=2, blocksize=512)
+    default_speaker_player = default_speaker.player(sample_rate_output, channels=channels, blocksize=256)
 
     with default_speaker_player as p:
         while True:
@@ -230,11 +226,11 @@ def play_only_Process(queue_data_to_play,
                               style="bold green")
 
                 # sf.write('temporal/output_{}.wav'.format(number),
-                #          mydata_predicted, sample_rate_input, 'PCM_32')
+                #          mydata_predicted, sample_rate_output, 'PCM_32')
 
                 p.play(mydata_predicted/numpy.max(mydata_predicted))
             else:
-                time.sleep(0.01)
+                time.sleep(0.01) # to don't stress cpu
 
 
 def power_on_tensorflow_serving_Process():
@@ -276,39 +272,38 @@ if __name__ == '__main__':
     hello()  # Logo and info of the project
     clean_temporal_files()  # Clean files by path
 
-    data_recorded_index = Queue()
-    data_recorded = Queue()
+    queue_data_recorded_index = Queue()
+    queue_data_recorded = Queue()
 
-    data_to_play_index = Queue()
-    data_to_play = Queue()
+    queue_data_to_play_index = Queue()
+    queue_data_to_play = Queue()
 
     time.sleep(INITIAL_DELAY_SECONDS)  # drivers slow start needed
 
-
     # Turn on server of tensorflow serving
-    p0_server=Process(target=power_on_tensorflow_serving_Process,name='[SERVER]')
-    p0_server.start()
-    p0_server.join()
+    P0_SERVER_PROCESS=Process(target=power_on_tensorflow_serving_Process,name='[SERVER]')
+    P0_SERVER_PROCESS.start()
+    P0_SERVER_PROCESS.join()
+
+    time.sleep(INITIAL_DELAY_SECONDS)  # drivers slow start needed
 
     # Record voice continously
-    p1 = Process(target=record_only_Process, args=((data_recorded),
-                                                 (data_recorded_index)), name='[P1]')
+    P1_RECORDER_PROCESS = Process(target=record_only_Process, args=((queue_data_recorded),
+                                                 (queue_data_recorded_index)), name='[P1]')
     # Process as queued
-    p2 = Process(target=process_only_Process, args=((data_recorded),
-                                                    (data_recorded_index), 
-                                                    (data_to_play),
-                                                    (data_to_play_index)), name='[P2]')
+    P2_PROCESSMODEL_PROCESS = Process(target=process_only_Process, args=((queue_data_recorded),
+                                                    (queue_data_recorded_index), 
+                                                    (queue_data_to_play),
+                                                    (queue_data_to_play_index)), name='[P2]')
     # Play as finished processed
-    p3 = Process(target=play_only_Process, args=((data_to_play), 
-                                                 (data_to_play_index)), name='[P3]')
-
-    
+    P3_PLAYER_PROCESS = Process(target=play_only_Process, args=((queue_data_to_play), 
+                                                 (queue_data_to_play_index)), name='[P3]')
 
     # Charge and join threads
-    p1.start()
-    p2.start()
-    p3.start()
+    P1_RECORDER_PROCESS.start()
+    P2_PROCESSMODEL_PROCESS.start()
+    P3_PLAYER_PROCESS.start()
 
-    p1.join()
-    p2.join()
-    p3.join()
+    P1_RECORDER_PROCESS.join()
+    P2_PROCESSMODEL_PROCESS.join()
+    P3_PLAYER_PROCESS.join()
