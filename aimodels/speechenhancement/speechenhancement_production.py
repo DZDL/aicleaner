@@ -157,7 +157,7 @@ def prediction_production_data_as_narray(frame_length,
     division=128/1400 # should be 44100/800
     audio=np.asarray([np.hstack(mydata),])
     audio_downsampled = samplerate.resample(audio[0], division, 'sinc_best')  
-    audio=np.asarray([audio_downsampled,])
+    audio=np.asarray([audio_downsampled,],dtype=np.float32)
     # we need to downsample the audio array
 
     print(audio)

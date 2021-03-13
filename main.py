@@ -36,7 +36,7 @@ channels = 1  # default mono
 sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
 record_seconds = 2  # default 1.1 due some restrictions
-INITIAL_DELAY_SECONDS = 1  # initial delay in seconds to create threads
+INITIAL_DELAY_SECONDS = 1.2  # initial delay in seconds to create threads
 console.print("[GLOBAL CONFIGS] Finish loading variables and constants.",
               style="bold green")
 
@@ -204,7 +204,6 @@ def process_only_Process(data_recorded,
             data_to_play_index.put(number)
             data_to_play.put(mydata_predicted)
 
-            break
         else:
             time.sleep(0.05)
 
@@ -230,10 +229,10 @@ def play_only_Process(queue_data_to_play,
                 console.print('{} POPPED: {}'.format(process_name, str(number)),
                               style="bold green")
 
-                sf.write('temporal/output_{}.wav'.format(number),
-                         mydata_predicted, sample_rate_input, 'PCM_32')
+                # sf.write('temporal/output_{}.wav'.format(number),
+                #          mydata_predicted, sample_rate_input, 'PCM_32')
 
-                # p.play(mydata_predicted/numpy.max(mydata_predicted))
+                p.play(mydata_predicted/numpy.max(mydata_predicted))
             else:
                 time.sleep(0.01)
 
@@ -292,8 +291,8 @@ if __name__ == '__main__':
     p0_server.join()
 
     # Record voice continously
-    p1 = Process(target=record_only_Process, args=((data_recorded), 
-                                                    (data_recorded_index)), name='[P1]')
+    p1 = Process(target=record_only_Process, args=((data_recorded),
+                                                 (data_recorded_index)), name='[P1]')
     # Process as queued
     p2 = Process(target=process_only_Process, args=((data_recorded),
                                                     (data_recorded_index), 
