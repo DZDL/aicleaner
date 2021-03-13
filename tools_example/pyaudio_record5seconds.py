@@ -4,7 +4,7 @@ import pyaudio
 import wave
 
 # the file name output you want to record into
-filename = "recorded.wav"
+filename = "temporal/recorded.wav"
 # set the chunk size of 1024 samples
 chunk = 1024
 # sample format
@@ -44,6 +44,7 @@ wf = wave.open(filename, "wb")
 wf.setnchannels(channels)
 # set the sample format
 wf.setsampwidth(p.get_sample_size(FORMAT))
+print('wf.setsampwidth: {}'.format(p.get_sample_size(FORMAT)))
 # set the sample rate
 wf.setframerate(sample_rate)
 # write the frames as bytes

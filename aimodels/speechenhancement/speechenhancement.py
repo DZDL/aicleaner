@@ -70,6 +70,7 @@ def prediction(weights_path,
     loaded_model=loaded_model
 
     # Extracting noise and voice from folder and convert to numpy
+    print("PREDICTION--------------------")
     print(audio_dir_prediction,
           audio_input_prediction,
           sample_rate,
@@ -83,6 +84,12 @@ def prediction(weights_path,
                                  hop_length_frame,
                                  min_duration)
 
+    print("AUDIO LOADED--------------------")                                 
+    print(audio)
+
+    print(len(audio[0]))
+
+    print("OTHERS--------------------")   
     # Dimensions of squared spectrogram
     dim_square_spec = int(n_fft / 2) + 1
     print(dim_square_spec)
