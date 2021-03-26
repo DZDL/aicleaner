@@ -5,11 +5,12 @@
   <a href="#">
     <img src="docs/banner.png">
   </a>
-  <h3 align="center">AiCleaner<br>
-  Audio denoising real-time powered by artificial intelligence (Alpha)</h3>
+  <h3 align="center">VoiceCleaner<br>
+  Audio denoising real-time powered by artificial intelligence (Beta)</h3>
 </p>
 
->Name of the project may change on future.
+>Name of the project may change on future. 
+>Old-name: aicleaner
 <hr style="height:2px;border-width:0;color:gray;background-color:gray">
 
 <!-- TABLE OF CONTENTS -->
