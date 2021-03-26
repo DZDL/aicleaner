@@ -9,8 +9,8 @@ License: MIT
 
 """
 tensorflow_model_server --rest_api_port=8501 \ 
---model_name=model_unet \ 
---model_base_path="/path/to/serving/"
+                        --model_name=model_unet \ 
+                        --model_base_path="/path/to/serving/"
 """
 
 import json

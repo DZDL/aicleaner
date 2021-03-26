@@ -1,3 +1,4 @@
-portaudio19-dev
-python-pyaudio
-python3-pyaudio
+tensorflow-model-server
+#portaudio19-dev
+#python-pyaudio
+#python3-pyaudio

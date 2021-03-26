@@ -237,20 +237,19 @@ def power_on_tensorflow_serving_Process():
 
     api_port = 8501
     model_name = 'model_unet'
-    model_base_path = '/home/god/Desktop/gits/aicleaner/aimodels/speechenhancement/serving/'
+    model_base_path = os.path.dirname(os.path.abspath('main.py'))
+    model_relative_path=model_base_path+'/aimodels/speechenhancement/serving/'
 
-    command = 'tensorflow_model_server \
-                --rest_api_port={} \
-                --model_name={} \
-                --model_base_path="{}"'.format(api_port,
+    command = 'tensorflow_model_server --rest_api_port={} --model_name={} --model_base_path="{}"'.format(api_port,
                                         model_name,
-                                        model_base_path)
+                                        model_relative_path)
 
     process_name = current_process().name
 
     console.print('{} TENSORFLOW SERVER TURNING ON...'.format(process_name),
                           style="bold green")
     # Turn on
+    print(command)
     os.popen(command)
 
     console.print('{} TENSORFLOW SERVER READY.'.format(process_name),
