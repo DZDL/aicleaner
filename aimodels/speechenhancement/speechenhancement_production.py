@@ -13,6 +13,9 @@ tensorflow_model_server --rest_api_port=8501 \
                         --model_base_path="/path/to/serving/"
 """
 
+# import sys # only for debug
+# np.set_printoptions(threshold=sys.maxsize) #only for debug
+
 import json
 import librosa
 import numpy as np
@@ -20,26 +23,25 @@ import requests
 import soundfile as sf
 import tensorflow as tf
 from tensorflow.keras.models import model_from_json
-#import sys # only for debug
-#np.set_printoptions(threshold=sys.maxsize) #only for debug
 
 try:
     # Calling from file path
     from data_tools_production import (audio_files_to_numpy,
-                                        audio_files_to_numpy_from_numpy, 
+                                        audio_files_to_numpy_from_numpy,
                                         inv_scaled_ou,
                                         matrix_spectrogram_to_numpy_audio,
-                                        numpy_audio_to_matrix_spectrogram, 
+                                        numpy_audio_to_matrix_spectrogram,
                                         scaled_in)
+
 
 except Exception as e:
     # Calling from other paths
     print(e)
     from .data_tools_production import (audio_files_to_numpy,
-                                        audio_files_to_numpy_from_numpy, 
+                                        audio_files_to_numpy_from_numpy,
                                         inv_scaled_ou,
                                         matrix_spectrogram_to_numpy_audio,
-                                        numpy_audio_to_matrix_spectrogram, 
+                                        numpy_audio_to_matrix_spectrogram,
                                         scaled_in)
 
 
@@ -61,7 +63,7 @@ def predict_with_tensorflow_server(unwrapped_data, output):
     if output == True:
         print("[TENSORFLOW SERVER] JSON RESPONSE ---------------------")
         print(json_response.text[:400]+'"continue...')
-    # print(json_response.text)        
+    # print(json_response.text)
     predictions = json.loads(json_response.text)['predictions']
     myreturn = np.asarray(predictions)
     return myreturn
@@ -146,50 +148,46 @@ def prediction_production_data_as_narray(frame_length,
                                          hop_length_fft,
                                          mydata,
                                          output):
-    
-    print("AUDIO LOADED--------------------") 
 
+    print("AUDIO LOADED--------------------")
 
     ################################################
-    ## 1st method (WRITING AND READING)
+    # 1st method (WRITING AND READING)
     ################################################
 
     # sf.write('temporal/mydata.wav', mydata, sample_rate, 'PCM_32')
-    
+
     # with open('temporal/audio_as_numpy.txt', 'w') as f:
     #         f.write(str(mydata))
 
     ################################################
-    ## 2nd method (FAILED due not resampled)
+    # 2nd method (FAILED due not resampled)
     ################################################
     # mydata_resampled=resample(mydata, 44100, 8000, res_type='kaiser_best')
     # # mydata=np.hstack(mydata)
     # a=frame_length # frame_length
     # b=hop_length_frame # hop_length_frame
-    # y = [mydata_resampled[start:start + a] for start in range(0, len(mydata_resampled) - a + 1, b)] 
+    # y = [mydata_resampled[start:start + a] for start in range(0, len(mydata_resampled) - a + 1, b)]
     # audio=np.vstack(y)
 
     ################################################
-    ## 3nd method (Success)
+    # 3nd method (Success)
     ################################################
 
-    myaudio=np.asarray(mydata)
-    myaudio=np.hstack(myaudio)
-    myaudio_resampled=librosa.resample(myaudio.T, 
-                                        44100,
-                                        8000, 
-                                        res_type='kaiser_fast',
-                                        fix=True)
+    myaudio = np.hstack(mydata)
+    myaudio_resampled = librosa.resample(myaudio,
+                                         orig_sr=44100,
+                                         target_sr=8000,
+                                         res_type='kaiser_best')
 
-    a=frame_length # frame_length
-    b=hop_length_frame # hop_length_frame
-    y = [myaudio_resampled[start:start + a] for start in range(0, len(myaudio_resampled) - a + 1, b)] 
-    audio=np.vstack(y)
-    
+    myaudio_resampled=np.hstack(myaudio_resampled)
 
-    # print(audio)
+    a = frame_length  # frame_length
+    b = hop_length_frame  # hop_length_frame
+    y = [myaudio_resampled[start:start + a]
+         for start in range(0, len(myaudio_resampled) - a + 1, b)]
+    audio = np.asarray(y)
 
-    # print(len(audio[0]))
     # Dimensions of squared spectrogram
     dim_square_spec = int(n_fft / 2) + 1
     # print(dim_square_spec)

@@ -10,7 +10,7 @@ List of things achieved:
 4. Do step 3 in loops. ✔️
 5. Support for tensorflow serving. ✔️
 6. Thread/Process and colorful output. ✔️
-7. Achieve real-time processing and multi-process. (Tensorflow only)). ✔️
+7. Achieve real-time processing and multi-process. (Tensorflow only). ✔️
 
 List of things to do, not sorted and looking for help:
 
@@ -25,5 +25,6 @@ List of things to do, not sorted and looking for help:
 8. Build a web app to host releases.
 9. Support for mobile devices if possible.
 10. Support for cloud processing.
+11. Support for stereo channeling instead of just mono.
 
 Please, let me know if you want to be a contributor, open pull-requests or ask me via PM.

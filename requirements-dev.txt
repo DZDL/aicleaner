@@ -1,0 +1,2 @@
+matplotlib>=3.4.0
+jupyterlab>=3.0.12

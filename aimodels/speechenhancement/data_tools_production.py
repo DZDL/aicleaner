@@ -63,7 +63,7 @@ def audio_files_to_numpy_from_numpy(audio_data_numpy,
                                                        frame_length,
                                                        hop_length_frame))
 
-    return np.vstack(list_sound_array)
+    return list_sound_array
 
 
 def blend_noise_randomly(voice, noise, nb_samples, frame_length):

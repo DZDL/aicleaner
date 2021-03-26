@@ -37,6 +37,7 @@ sample_rate_input = 44100  # default 44100
 sample_rate_output = 8000  # default 8000 due restrictions, can't be more by 2021-03-02
 record_seconds = 1.2  # default 1.1 due some restrictions
 INITIAL_DELAY_SECONDS = 0.5  # initial delay in seconds to create threads
+DELAY_IDLE=0.01 # seconds to sleep until check again the queue
 console.print("[GLOBAL CONFIGS] Finish loading variables and constants.",
               style="bold green")
 
@@ -62,7 +63,7 @@ def hello():
 |License: MIT                                                                                 |
 |Version: Alpha v0.1 [2020-03-13]                                                             |
 |Operative System detected: {}
-|Branch: MultiProcessing - 4 main Process (Record, Process, Play, Server)                     |
+|Branch: MultiProcessing - 4 main Process (Server, Record, Process, Play)                     |
 |---------------------------------------------------------------------------------------------|""".format(sys.platform), style="bold yellow")
 
 
@@ -144,6 +145,10 @@ def executeprediction(aimodel='speechenhancement',
 
 def record_only_Process(queue_data_recorded,
                         queue_data_recorded_index):
+    """
+    This process record the audio without spaces between each data
+    and put the data to a queue to be processed.
+    """
 
     import soundcard as sc  # Exception due Exceptions
 
@@ -179,6 +184,11 @@ def process_only_Process(queue_data_recorded,
                          queue_data_recorded_index,
                          queue_data_to_play,
                          queue_data_to_play_index):
+    """
+    This process get the audio data and put in the digestor
+    as the queued by recorder. However, it check each DELAY_IDLE
+    to don't saturate the queue
+    """
 
     time.sleep(INITIAL_DELAY_SECONDS)
     process_name = current_process().name
@@ -202,11 +212,16 @@ def process_only_Process(queue_data_recorded,
             queue_data_to_play_index.put(number)
             queue_data_to_play.put(mydata_predicted)
         else:
-            time.sleep(0.05) # to don't stress cpu
+            time.sleep(DELAY_IDLE) # to don't stress cpu
 
 
 def play_only_Process(queue_data_to_play,
                       queue_data_to_play_index):
+    """
+    This process get the audio data and put in the player
+    as the queued is processed. However, it check each DELAY_IDLE
+    to don't saturate the queue
+    """
 
     import soundcard as sc
 
@@ -230,10 +245,15 @@ def play_only_Process(queue_data_to_play,
 
                 p.play(mydata_predicted/numpy.max(mydata_predicted))
             else:
-                time.sleep(0.01) # to don't stress cpu
+                time.sleep(DELAY_IDLE) # to don't stress cpu
 
 
 def power_on_tensorflow_serving_Process():
+    """
+    This process handle tensorflow server
+    - Need apt installed for server side/inference
+    - Need pip installed to develop
+    """
 
     api_port = 8501
     model_name = 'model_unet'
@@ -254,9 +274,6 @@ def power_on_tensorflow_serving_Process():
 
     console.print('{} TENSORFLOW SERVER READY.'.format(process_name),
                           style="bold green")
-
-    # no return
-
 
 
 """
