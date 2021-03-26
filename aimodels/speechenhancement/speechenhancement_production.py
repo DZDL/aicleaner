@@ -20,7 +20,6 @@ import requests
 import soundfile as sf
 import tensorflow as tf
 from tensorflow.keras.models import model_from_json
-from librosa import resample
 #import sys # only for debug
 #np.set_printoptions(threshold=sys.maxsize) #only for debug
 
@@ -54,7 +53,7 @@ def predict_with_tensorflow_server(unwrapped_data, output):
     data = json.dumps({"signature_name": "serving_default",
                        "instances": unwrapped_data.tolist()})
     if output == True:
-        print("[TENSORFLOW SERVER] DATA SENDING....-------------------")
+        print("[TENSORFLOW SERVER] DATA SENDING...-------------------")
         print(data[:400]+'"continue...')
 
     headers = {"content-type": "application/json"}
@@ -150,6 +149,11 @@ def prediction_production_data_as_narray(frame_length,
     
     print("AUDIO LOADED--------------------") 
 
+
+    ################################################
+    ## 1st method (WRITING AND READING)
+    ################################################
+
     # sf.write('temporal/mydata.wav', mydata, sample_rate, 'PCM_32')
     
     # with open('temporal/audio_as_numpy.txt', 'w') as f:
@@ -171,7 +175,11 @@ def prediction_production_data_as_narray(frame_length,
 
     myaudio=np.asarray(mydata)
     myaudio=np.hstack(myaudio)
-    myaudio_resampled=resample(myaudio, 44100, 8000, res_type='kaiser_best')
+    myaudio_resampled=librosa.resample(myaudio.T, 
+                                        44100,
+                                        8000, 
+                                        res_type='kaiser_fast',
+                                        fix=True)
 
     a=frame_length # frame_length
     b=hop_length_frame # hop_length_frame

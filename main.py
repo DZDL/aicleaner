@@ -127,7 +127,7 @@ def executeprediction(aimodel='speechenhancement',
                                                                     hop_length_frame=8064,  # default 8064
                                                                     n_fft=255,  # default 255
                                                                     hop_length_fft=63,  # default 63
-                                                                    sample_rate=sample_rate_input,  # default 8000
+                                                                    sample_rate=sample_rate_output,  # default 8000
                                                                     mydata=mydata,  # data as numpy
                                                                     output=output)
 
@@ -241,8 +241,8 @@ def power_on_tensorflow_serving_Process():
     model_relative_path=model_base_path+'/aimodels/speechenhancement/serving/'
 
     command = 'tensorflow_model_server --rest_api_port={} --model_name={} --model_base_path="{}"'.format(api_port,
-                                        model_name,
-                                        model_relative_path)
+                                                                                                        model_name,
+                                                                                                        model_relative_path)
 
     process_name = current_process().name
 
@@ -280,23 +280,27 @@ if __name__ == '__main__':
     time.sleep(INITIAL_DELAY_SECONDS)  # drivers slow start needed
 
     # Turn on server of tensorflow serving
-    P0_SERVER_PROCESS=Process(target=power_on_tensorflow_serving_Process,name='[SERVER]')
+    P0_SERVER_PROCESS=Process(target=power_on_tensorflow_serving_Process,name='[P0][SERVER]')
     P0_SERVER_PROCESS.start()
     P0_SERVER_PROCESS.join()
 
     time.sleep(INITIAL_DELAY_SECONDS)  # drivers slow start needed
 
     # Record voice continously
-    P1_RECORDER_PROCESS = Process(target=record_only_Process, args=((queue_data_recorded),
-                                                 (queue_data_recorded_index)), name='[P1]')
+    P1_RECORDER_PROCESS = Process(target=record_only_Process,
+                                    args=((queue_data_recorded),(queue_data_recorded_index)), 
+                                    name='[P1][RECORDER]')
     # Process as queued
-    P2_PROCESSMODEL_PROCESS = Process(target=process_only_Process, args=((queue_data_recorded),
-                                                    (queue_data_recorded_index), 
-                                                    (queue_data_to_play),
-                                                    (queue_data_to_play_index)), name='[P2]')
+    P2_PROCESSMODEL_PROCESS = Process(target=process_only_Process, 
+                                        args=((queue_data_recorded),
+                                            (queue_data_recorded_index), 
+                                            (queue_data_to_play),
+                                            (queue_data_to_play_index)),
+                                        name='[P2][DIGESTOR]')
     # Play as finished processed
-    P3_PLAYER_PROCESS = Process(target=play_only_Process, args=((queue_data_to_play), 
-                                                 (queue_data_to_play_index)), name='[P3]')
+    P3_PLAYER_PROCESS = Process(target=play_only_Process, 
+                                args=((queue_data_to_play),(queue_data_to_play_index)),
+                                name='[P3][PLAYER]')
 
     # Charge and join threads
     P1_RECORDER_PROCESS.start()
