@@ -245,8 +245,9 @@ def play_only_Process(queue_data_to_play,
                 # sf.write('temporal/output_{}.wav'.format(number),
                 #          mydata_predicted, sample_rate_output, 'PCM_32')
 
-                p.play(mydata_predicted/numpy.max(mydata_predicted))
+                p.play(mydata_predicted)
             else:
+                # p.play(np.asarray([0]))
                 time.sleep(DELAY_IDLE)  # to don't stress cpu
 
 
