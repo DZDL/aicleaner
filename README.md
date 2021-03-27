@@ -70,7 +70,7 @@ Table 1. Models already implemented
 
 | ✔️/x | Type    | Model name         | Repository                                                                                                 | Demo                                              | License |
 | --- | ------- | ------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------- |
-| ✔️   | U-Net   | Speech-Enhancement | [Original](https://github.com/vbelz/Speech-enhancement) [Adapted](https://github.com/DZDL/audio-denoising) | [Heroku](https://github.com/DZDL/audio-denoising) | MIT     |
+| ✔️   | U-Net   | Speech-Enhancement [Max 8000 SR] | [Original](https://github.com/vbelz/Speech-enhancement) [Adapted](https://github.com/DZDL/audio-denoising) | [Heroku](https://github.com/DZDL/audio-denoising) | MIT     |
 | x   | Unknown | DNP                | [Original](https://github.com/mosheman5/DNP) [Adapted](https://github.com/DZDL/audio-denoiser)             | Broken                                            | Unfound |
 
 
