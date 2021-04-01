@@ -58,6 +58,13 @@ pip3 install -r requirements.txt
 python3 main.py
 ```
 
+#### On-premise Windows/MacOS/Linux (Cross-platform)
+
+Needs Docker
+```
+# Tutorial comming
+```
+
 #### Cloud hosted
 
 Not yet implemented.
