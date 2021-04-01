@@ -9,8 +9,12 @@
   Audio denoising real-time powered by artificial intelligence (Beta)</h3>
 </p>
 
->Name of the project may change on future. 
->Old-name: aicleaner
+> GUI version: [aicleaner gui](https://github.com/DZDL/aicleaner-gui)
+
+> Name of the project may change on future. 
+
+> Old-name: aicleaner
+
 <hr style="height:2px;border-width:0;color:gray;background-color:gray">
 
 <!-- TABLE OF CONTENTS -->
