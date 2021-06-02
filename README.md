@@ -44,14 +44,14 @@ There are multiple ways to run: on-premise version (as personal user), on-cloud 
 #### On-premise Linux
 
 Apt
-```
+```bash
 sudo apt-get update
 sudo apt-get install tensorflow-model-server
 # More info https://www.tensorflow.org/tfx/serving/setup
 ```
 
 Pip
-```
+```bash
 git clone https://github.com/DZDL/aicleaner
 cd aicleaner
 pip3 install -r requirements.txt
@@ -61,7 +61,7 @@ python3 main.py
 #### On-premise Windows/MacOS/Linux (Cross-platform)
 
 Needs Docker
-```
+```bash
 # Tutorial comming
 ```
 
